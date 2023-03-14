@@ -104,7 +104,7 @@ Now we have our new set of data, we can now graph this set!
 ggplot(ku_win_loss_points, aes(x = Game, y = Points)) + 
   geom_line(aes(color = "white")) + 
   geom_point(aes(color = str_sub(Result, 1, 1)), size = 4) +
-  geom_vline(xintercept = 13, color = "maroon", linetype = "dotted") +
+  geom_vline(xintercept = 13, color = "pink", linetype = "dotted") +
   scale_color_manual(values = c("W" = "yellow", "L" = "red"), name = "test title") +
  theme(panel.background = element_rect(fill = '#082557', color = 'white')) +
   xlab("Game Number") +
