@@ -80,7 +80,7 @@ geom_vline(xintercept = 13, color = "red", linetype = "dotted")
 
 A more informative graph would also contain information about how these points occurred. For this case, we decide to also color coordinate the wins and losses for the data set. 
 
-- Let's first create the data set to deal with
+-Let's first create the data set to deal with
 
 ```{r win-loss-set creation}
 colnames(ku_game_log) = ku_game_log[1,]
