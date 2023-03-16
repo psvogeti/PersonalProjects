@@ -1,0 +1,181 @@
+---
+title: "Kansas Win-Loss Performances"
+author: "Pranav Vogeti"
+date: "2023-03-15"
+output: html_document
+---
+
+```{css, echo=FALSE}
+body {
+  background-color: papayawhip 
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate) # to extract the year
+library(readxl) # this is to read in .xlsx data
+library(kableExtra) # this is to format our outputted tables
+```
+
+# Objective: 
+
+After the rather abysmal showing by the Jayhawks against Texas in the 2023 Big 12 Championship, and after the scores for each loss, I was curious to see if there are particular stats that can be used to obtain an idea of what went wrong for that loss. This will also serve as a general statistical analysis of how the Jayhawks perform when they win and when they lose. 
+
+
+
+
+
+# Formatting our Data
+
+I'll begin by first loading in the raw data obtained from Sports Reference and then imported and formatted in Excel. To read this Excel File, I am using the `read_excel()` function from the `readxl` library
+```{r get-ku-data}
+## obtain the raw data from which we will obtain the points
+ku_raw_data <- read_excel("../data/kumbb23.xlsx")
+
+##print out this data
+ku_raw_data
+```
+
+
+
+Before we can truly begin our data adventure, this tibble actually "hides", if you will, the column headers we should be using. Currently, we have character-valued column headers that R made by default. But row 1 of this data contains the column headers we want.
+
+* I'll use `colnames()` to store this row and set it to be the column names for `ku_raw_data` and `subset()` to remove the first row from this dataset
+
+**NOTE:** Credit for this column rename idea goes to my TA for my STAT 240 class. He showed me this process. 
+```{r columnnames, eval = TRUE}
+##This will set the first row (a 1x40 tibble vector) to be our column header
+colnames(ku_raw_data) = ku_raw_data[1,]
+## Avoids the duplicate 'Opp' column header and we make the distinction
+colnames(ku_raw_data)[3] = "Team Name"
+
+## keep all rows where Tm has a numeric value
+ku_true_data <- ku_raw_data %>% subset(Tm != "Tm")
+
+## This will remove the opponent columns from this data set
+ku_true_data <- ku_true_data %>% select(-c(23:39))
+
+
+#print out the formatted data
+ku_true_data
+```
+
+
+
+
+# Filtering our Formatted Data
+
+Now we can finally fiddle around with our data! I will make use of extensive `dplyr` functions to help filter the data as appropriate. The end goal will be to obtain a summary of the basic stats for only KU, including their wins and losses 
+
+* Basic Stats are defined as
+  + W/L as `Result`
+  + Points as `PTS`
+  + Shooting Percentages 
+    + Field Goal Percentage as `FGP`
+    + Three Point Field Goal Percentage as `ThrP`
+    + Free Throw Percentage as `FTP`
+  + Rebounds 
+    + Offensive Rebounds as `ORB`
+    + Defensive Rebounds as `DRB` calculated from `TRB` - `ORB`
+  + Assists as `AST`
+  + Steals as `STL`
+  + Blocks as `BLK`
+  
+```{r summaries, eval = TRUE}
+##rename and add stat columns
+ku_summary <- ku_true_data %>% 
+  rename(
+    Result = 'W/L',
+    PTS = Tm,
+    FGP = 'FG%', 
+    ThrP = '3P%',
+    FTP = 'FT%'
+  )  %>%
+  mutate(
+    ## make everything numeric so that we can fiddle with it
+    PTS = as.numeric(PTS),
+    FGP = as.numeric(FGP),
+    ThrP = as.numeric(ThrP),
+    FTP = as.numeric(FTP),
+    ORB = as.numeric(ORB),
+    TRB = as.numeric(TRB),
+    AST = as.numeric(AST),
+    STL = as.numeric(STL),
+    BLK = as.numeric(BLK)
+  ) %>%
+  mutate(
+    #add the defensive rebound column
+    DRB = TRB - ORB
+  ) %>%
+  select(
+    ## keep the stat columns that we want
+    Result, PTS, AST, TRB, DRB, ORB, STL, BLK, FGP, ThrP, FTP
+  )
+
+
+##print out the first 10 rows of this summary data
+print(ku_summary, n = 10)
+```
+
+
+
+
+
+## Summarization
+
+In this section, I am attempting to summarize these stats by wins and losses. In other words, what are the averages of each of these stat markers when Kansas wins? Loses?
+
+I will use `group_by()` alongside `summarize()` to obtain this information
+
+* The averages are defined by the convention: `avgSTAT`
+* The summarized table will be formatted using `kable_styling()` 
+```{r super-summary}
+
+ku_super_summary <- ku_summary %>%
+  group_by(Result) %>%
+  summarize(
+    avgPTS = mean(PTS),
+    avgAST = mean(AST),
+    avgSTL = mean(STL),
+    avgBLK = mean(BLK),
+    avgTRB = mean(TRB),
+    avgDRB = mean(DRB),
+    avgORB = mean(ORB),
+    avgFGP = mean(FGP),
+    avgThrP = mean(ThrP),
+    avgFTP = mean(FTP)
+  )
+
+#ku_super_summary <- ku_super_summary %>%
+ #pivot_longer(
+    #cols = c("avgPTS", "avgAST", "avgSTL", "avgBLK", "avgTRB", "avgDRB", "avgORB", "avgFGP", "avgThrP", "avgFTP"),
+    #names_to = c(".value", "Averages"), 
+    #names_sep = "avg")
+
+#put the data in a kable-styled table
+ku_super_summary %>% 
+  kable() %>% 
+  kable_styling(
+    position = "left", 
+    full_width = FALSE,
+    bootstrap_options = c("striped")
+  )
+```
+
+## Data Analysis
+
+Based on this data, it seems that the main difference in a Win Loss results in ball movement. Excluding OT cases, Kansas averages 11.2 assists in a loss against 17.5 assists in a win. Those six assists definitely impact point production as evidenced by the point differences. Moreover, every loss, they've faced staunch defenses as their Field Goal Percentage dips from 48.6% to 38.9% by loss, a near 10% decrease. This magnitude of a decreases is also seen in three point percentage, from 36.5% to 27.5%. The assist column demonstrates that when the team passes the ball more, more open looks are generated, explaining these field goal percentage disparities. 
+
+By this data alone, Kansas loses when they do not move the ball, or when they encounter a defense that forces isolations, stifling stars from open court movement. 
+
+# Conclusions and Extensions
+
+Overall, this was a fun project to work on. I actually tried to import the data directly from a link and use `rvest` library to unravel it but I encountered empty values and duplicate column names that I just could not work around. This project introduced me to how to import csv text to an Excel file and serve as my introduction to `readxl` as well. I also was able to use the `kableExtra` library to format my outputted summary data which I now know I will make extensive use of. 
+
+As an extension of this project, I do want to learn to pivot this data to tidy format to visually graph this data. I hope to this in the very near future.  
+
+Another extension that would be interesting is to look at an opponent that Kansas has lost to frequently (i.e Texas) and investigate if their win/loss numbers correlate to the scores presented. 
+
+  

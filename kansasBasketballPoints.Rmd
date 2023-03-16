@@ -41,6 +41,10 @@ Now we just have the 34 x 40 tibble. From here we can filter out what we want. B
 #sets the first row of the tibble (a 1 x 40 tibble vector) to be the column headers for our data. 
 colnames(ku_game_log) = ku_game_log[1,]
 
+
+##print
+ku_game_log
+
  
 ##create the game-point log
 ku_point_game_log <- ku_game_log %>% 
