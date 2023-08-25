@@ -1,0 +1,459 @@
+---
+title: "Lottery Analysis"
+author: "Pranav Vogeti"
+date: "2023-05-17"
+output: html_document
+---
+
+```{css, echo=FALSE}
+body {
+  /*background-color: navy*/
+  background-color: papayawhip
+}
+/**
+h1 {
+  color: lightblue
+}
+
+h3 {
+  color: navajowhite
+}
+
+body {
+  color: floralwhite
+}*/ 
+```
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse) # convenient wrapper library for our data parsing
+library(kableExtra) # this is to format our outputted tables
+```
+
+
+
+
+
+# Introduction
+
+The NBA is a professional basketball organization that brings in the best of the best basketball athletes from around the world and fosters healthy team competition among them. In order to get to the NBA, the typical NBA athlete first starts out playing high-intensity basketball in their youth upto their adult teenage years. Then, they go on to pursue the sport in the college setting where the players receive more national spotlight and compete against stiffer competition. Finally, the players that play the best at their roles during their college days go on to commit to the NBA Draft, where they, among 59 other hopeful players, get to here their name get called to an NBA team. 
+
+
+### The Focus Question
+
+How well do lottery picks fare in the NBA compared to their later draft counterparts over the course of their career?
+
+### Motivation
+
+The NBA Draft is divided into two rounds. Each round consists of 30 draft picks where players are picked on a "best-available" selection process. For instance, the first five draft picks are deemed "lottery" picks and receive that designation because of their high success ceiling that these NBA teams have designated against. Lottery picks can often make or break the future of an NBA team because these teams will build around these players as the backbone of the franchise. Today, with all of the focus and attention on the generational draft prospect Victor Wembanyama, I was wondering just how impactful players like him tend to be. 
+
+
+# Background
+
+### About the Original Data
+
+The original data was scraped together from *Sports Reference* specifically *Basketball Reference*. Using their draft data, ^[Basketball Reference. (2023). NBA Draft Data [Dataset; Website]. Scraped 2000-2009 Draft Data. https://www.basketball-reference.com/draft/] the excel sheet was crafted by obtaining their tables in a CSV format and then adjusting as necessary to the excel file. 
+
+
+### Data Description
+
+The excel sheet itself contains year-by-year averages of a draft pick's stat-line from NBA Draft 2000 to NBA Draft 2009. For however long the player has played in the NBA, each year's average is documented. Furthermore, players collected here are from the following specific picks only: 
+
+* Picks 1 - 5, 10, 30, 45, and the last pick which varies from 58-60 because of how the draft format has varied early on during this time frame. 
+
+We chose the 2000-2009 timeframe because this timeframe, considering it is 2023, has witnessed the introduction and conclusion of many players careers. There are some anomalies (LeBron James as an example) where the players have played extensively, but a good majority of these players are retired or very close to retirement given their recent performances and age. 
+
+
+### The Key Variables
+
+* The key variables from this data set we will use for this excursion: 
+  - `draft_yr` the year the player was drafted
+  - `player` the basketball player's first and last name
+  - `season` the basketball season the player has participated in 
+  - `pos` the position of the basketball player
+  - `min_gm` the average minutes per game of the basketball player
+  - `fgm` the average number of made field goals per game by the basketball player
+  - `fga` the number of field goal attempts per game by the basketball player 
+  - `fg_pct` the ratio between `fgm` and `fga` as a percentage
+  - `trb` the average number of team rebounds per game the basketball player collects 
+  - `ast` the average number of assists per game the basketball player makes
+  - `stl` the average number of steals per game the basketball player makes
+  - `blk` the average number of blocks per game the basketball player makes
+  - `pts` the average number of points per game the basketball player obtains
+ 
+  
+
+### Assumptions and Unusuality
+
+Before we dive into the data, it is important to consider the assumptions regarding this data set. It is clear that no two players are the same. Each player plays to their style to fit the bill of their team. For instance, both Ricky Rubio and Stephen Curry are point guards drafted at the same time. However, they play completely different styles and their statlines reflect this. 
+
+Another important assumption is that this analysis ignores any and all injury effects these players have experienced. An injury can, and often is, devastating to a player's play style. A unique example that is contained in this data is Derrick Rose. The injury he has suffered during his prime MVP years has significantly impacted his performance in the following years. With that said, this data excursion ignores this effect and treats each year as an equal year in terms of player potential. 
+
+Finally, as mentioned before, most player timelines are captured in this data set. However, there are some whose careers are rising, peaking, or faltering. These players still have several years in the NBA and thus are not fairly compared in this excursion when placed against their older or younger counterparts. 
+
+
+### Report Intentions
+
+The rest of this report will focus on cleaning the data to fit our needs, and analyzing said data and fostering meaningful observations and conclusions. 
+
+
+
+# Analysis
+
+### Data Cleanup
+
+Here we will cleanup our data to fit our analysis needs. Moreover, we will eliminate years that are counted more than once per player as these years designate points in the season where the player has been traded to a different team. Since we don't care about the team that the player is with, we are only interested in the averages by year per player. 
+
+We will also introduce a new data column called `draft_type` that categorizes the `draft_pick` of each player under the following categories (*lot* means lottery)
+
+* 1: *lot_1*
+* 2: *lot_2*
+* 3: *lot_3*
+* 4: *lot_4*
+* 5: *lot_5*
+* 10: *tenth_pick*
+* 15: *fifteenth_pick*
+* 30: *middle_pick*
+* 45: *mid_second_pick*
+* 58-60: *last_pick*
+
+```{r read-clean, echo = FALSE}
+lottery_data_orig <- read_csv("../data/2000_2009_Lottery_Data.csv")
+
+##print the original data
+print(lottery_data_orig, n = 10)
+
+#select the columns of choice
+lottery_data_mod <- lottery_data_orig %>%
+  select(
+    draft_yr, player, draft_pick, 
+    season, pos, min_gm, 
+    fgm, fga, fg_pct, 
+    trb, ast, stl, blk, pts
+    )
+
+# make appropriate stats numerical for calculations
+lottery_data_mod2 <- lottery_data_mod %>%
+  filter(!str_detect(pos, "DNP")) %>%
+  mutate(
+    fgm = as.numeric(fgm),
+    fga = as.numeric(fga),
+    fg_pct = as.numeric(fg_pct),
+    trb = as.numeric(trb),
+    ast = as.numeric(ast),
+    stl = as.numeric(stl), 
+    blk = as.numeric(blk),
+    pts = as.numeric(pts)
+  )
+
+# average duplicate years 
+lottery_data_new <- lottery_data_mod2 %>%
+  group_by(player, season, draft_pick, draft_yr) %>%
+  summarize(
+    fgm = mean(fgm),
+    fga = mean(fga),
+    fg_pct = mean(fg_pct),
+    trb = mean(trb),
+    ast = mean(ast),
+    stl = mean(stl), 
+    blk = mean(blk),
+    pts = mean(pts)
+  )
+
+#categorize the draft pick
+lottery_data <- lottery_data_new %>%
+  mutate(
+     draft_type = case_when(
+      draft_pick == 1 ~ "lot_1",
+      draft_pick == 2 ~ "lot_2",
+      draft_pick == 3 ~ "lot_3",
+      draft_pick == 4 ~ "lot_4",
+      draft_pick == 5 ~ "lot_5",
+      draft_pick == 10 ~ "tenth_pick",
+      draft_pick == 15 ~ "fifteenth_pick",
+      draft_pick == 30 ~ "middle_pick",
+      draft_pick == 45 ~ "mid_second_pick",
+      draft_pick >= 55 ~ "last_pick",
+    )
+  )
+
+
+
+#print the newly cleaned dataset
+print(lottery_data, n = 15)
+```
+
+### Data Summaries
+
+In this section we will create subset data by `draft_type` and display relevant summary statistics for each `draft_type` to get a sense of the differences between these players on average. 
+
+
+```{r subset, echo = FALSE}
+
+## A function to include or exclude certain draft_types from lottery_data as its own new data set
+
+#@param type the draft type of the player to filter
+#@param include whether to include the type in the filter, default is true
+get_draft_type <- function(type, include = TRUE) {
+  lottery_data %>%
+    filter(
+      case_when(
+        include == TRUE ~ str_detect(draft_type, type),
+        include == FALSE ~ !str_detect(draft_type, type)
+      )
+    )
+}
+
+## A function to format data and neatly display data in terms of averaging
+## overall draft_type stats
+
+#@param data the data to summarize and display
+display_sum <- function(data) {
+  data %>%
+    group_by(draft_type) %>% 
+    summarize(
+      fgm = mean(fgm),
+      fga = mean(fga),
+      fg_pct = mean(fg_pct),
+      trb = mean(trb),
+      ast = mean(ast),
+      stl = mean(stl), 
+      blk = mean(blk),
+      pts = mean(pts)
+    ) %>%
+    kable() %>%
+     kable_styling(
+        position = "left",
+        full_width = FALSE,
+        bootstrap_options = c("bordered", "condensed", "striped"),
+     )
+}
+
+
+
+
+lottery_picks <- get_draft_type("lot")
+
+# Optional datasets to use if needed
+# lot1_picks <- get_draft_type("lot_1")
+# lot2_picks <- get_draft_type("lot_2")
+# lot3_picks <- get_draft_type("lot_3")
+# lot4_picks <- get_draft_type("lot_4")
+# lot5_picks <- get_draft_type("lot_5")
+# tenth_picks <- get_draft_type("tenth")
+# fifteenth_picks <- get_draft_type("fifteenth")
+# middle_picks <- get_draft_type("middle")
+# mid_second_picks <- get_draft_type("mid_second")
+# last_picks <- get_draft_type("last")
+# non_lottery_picks <- get_draft_type("lot", FALSE)
+
+
+display_sum(lottery_data)
+```
+
+Upon first glance at this data table, it seems that the lottery picks dominate offensively. All of the lottery picks, including the tenth pick (which is also the last lottery pick but for this analysis we chose to exclude that range) exhibit double-digit point displays on average throughout the average NBA career than any other pick. In fact, no other `draft_type` witnesses that double digit point average. It does seem that the top-10 really belong in their own stat league given how dominant these standout over their other `draft_type` competitors. 
+
+
+### Analysis for the Question
+
+This portion will focus on comparing the performances of each `draft_type` against one another across career timelines through line graphs and even a hypothesis test to make inference means validation on whether it matters when a player is drafted. 
+
+#### Complete Comparison
+
+Here we will chart the `draft_type` performance across the past 23 seasons for **points, assists, rebounds**. We could delve into the other stats but these generally serve as effective summaries of player efficiency, especially when averaged out over the career.   
+
+```{r graph-setup, echo = FALSE}
+
+## a function to graph formatted lottery data as a Stat vs Season line graph
+
+#@param data the data that will be graphed
+#@param stat the stat to graph
+#@param stat_char the stat as a Character String for graph label purposes
+line_graph_stat <- function(data, stat, stat_char) {
+  ggplot(data, aes(x = season, y = stat, group = draft_type, color = draft_type)) +
+    #stat_smooth(linewidth = 1, se = FALSE) +
+    geom_line(linewidth = 1) + 
+    #geom_path(linewidth = 1) + 
+    guides(x = guide_axis(angle = 90)) +
+    xlab("NBA Regular Season") +
+    ylab(stat_char) +
+    ggtitle(paste(stat_char, " | Performance Across the Past 23 Regular Seasons"),
+            subtitle = "NBA Regular Seasons 2000-2023") +
+    theme_linedraw() 
+   
+}
+
+## summarizes the data such that all players of a draft_type that played in one particular season are averaged for that season and the rest of the seasons thereafter
+
+#@param data the data to summarize
+sum_data <- function(data) {
+  data %>% 
+    group_by(season, draft_type) %>%
+    summarise(
+      fgm = mean(fgm),
+      fga = mean(fga),
+      fg_pct = mean(fg_pct),
+      trb = mean(trb),
+      ast = mean(ast),
+      stl = mean(stl),
+      blk = mean(blk),
+      pts = mean(pts)
+     )
+
+}
+
+
+draft_data <- sum_data(lottery_data)
+```
+
+```{r points-graph, echo = FALSE}
+line_graph_stat(draft_data, draft_data$pts, "Points")
+```
+
+In this complete comparison line graph, we averaged the points scored each season by  `draft_type`. It is a very busy graph. However, this graph does tell us that lottery picks do fare markedly better compared to their non-lottery counterparts in terms of point production. The last picks perform the worst in this category but this makes sense given that most of the last picks contained in this data set do not play extravagant minutes and in many games if any. 
+
+
+```{r assists-graph, echo = FALSE}
+line_graph_stat(draft_data, draft_data$ast, "Assists")
+```
+
+In this complete comparison line graph, we averaged the assists dealt each season by  `draft_type`. It is a very busy graph. However, this graph does tell us that lottery picks do fare markedly better compared to their non-lottery counterparts in terms of assist production. What is shocking however is that the whole batch of second picks (`lot_2`) do not average that many assists. When looking at `lot_4`, they consistently lead the pack especially after the 2009-10 regular season. Given the playmaking required to be significant in this stat column, this graph is likely a reflection of the number of guards or small forwards per `draft_type` rather than a true comparison by players as the player position often fosters the role on offense.  
+
+
+
+```{r rebounds-graph, echo = FALSE}
+line_graph_stat(draft_data, draft_data$trb, "Rebounds")
+```
+
+In this complete comparison line graph, we averaged the rebounds dealt each season by `draft_type`. It is a very busy graph. However, this graph does tell us that lottery picks do fare better compared to their non-lottery counterparts in terms of rebound production on average. The peak of the middle_pick (30th pick) around the 2012-2013 season is heavily noticeable here. Upon further analysis of this graphed data set, three players in total were reponsible: Anderson Varejao, David Lee, and Joel Freeland, with the former two players averaging double digit rebounds for the 2012-2013 regular season (about 14 and 11 respectively). All that said, given the length, strength, and proximity to the basket required to be significant in this stat column, this is likely a reflection of the number of forwards and centers per `draft_type` rather than a true comparison by players as the position often fosters the role on offense. 
+
+#### Lottery Picks Analysis
+
+In this section, we will provide analysis of the lottery picks on their own, and then compare them collectively against their later pick counterparts. 
+
+```{r lottery-only-graphs, echo = FALSE}
+sum_lottery_picks <- sum_data(lottery_picks)
+
+
+line_graph_stat(sum_lottery_picks, sum_lottery_picks$pts, stat_char = "Points")
+
+line_graph_stat(sum_lottery_picks, sum_lottery_picks$ast, stat_char = "Assists")
+
+line_graph_stat(sum_lottery_picks, sum_lottery_picks$trb, stat_char = "Rebounds")
+```
+
+Here we get a zoomed-in view of the lottery players performance across these three statlines. Much to my surprise, the first pick (`lot_1`) is not as dominant in these categories as I previously assumed. The only stat where they dominate is the rebounds category although in recent years that has tremendously gone down. The rebound domination is likely due to on average, more centers and forwards being drafted at the number one pick. But the erratic dominance of `lot_1` is probably due to the boom-or-bust philosophy as many teams attempt to build around these players, often making massive overhauls to their roster. As a result, if the draft pick is a bust or does not exhibit their full potential for longer periods of time, their performances will have a short peaking window as seen in the rebound graph. The fourth picks (`lot_4`) seems to be a host to a myriad of guard play as seen by their dominance in the assists graph. Points-wise, everyone is within the same region of point spread with the only surprise being how dramatic `lot_2`'s increase is in the final years. This increase is probably due to the limited number of players left in the current league since these are players drafted from the 2000-2009 NBA era, where  many retirements from this era have occurred in recent years. 
+
+
+Here we do a final analysis of lottery vs non-lottery players across the past 23 regular seasons. 
+
+```{r heavy-filter, echo = FALSE}
+
+lot_div_data <- lottery_data %>%
+   mutate(
+      draft_type = case_when(
+       str_detect(draft_type, "lot") == TRUE ~ "lottery",
+       str_detect(draft_type, "lot") == FALSE ~ "non-lottery"
+     )
+   )
+
+
+# lot_div_data <- lottery_data %>%
+#     mutate(
+#        draft_type = case_when(
+#         draft_pick < 11  ~ "lottery",
+#         draft_pick > 11  ~ "non-lottery"
+#       )
+#     )
+
+sum_lot_div_data <- sum_data(lot_div_data)
+
+line_graph_stat(sum_lot_div_data, sum_lot_div_data$pts, "Points")
+
+line_graph_stat(sum_lot_div_data, sum_lot_div_data$ast, "Assists")
+
+line_graph_stat(sum_lot_div_data, sum_lot_div_data$trb, "Rebounds")
+```
+
+In all of these graphs, it is jaw-droppingly clear how valuable lottery picks are to a team. In all of these stat-lines lottery picks from 2000-2009 simply out-class their non-lottery counterparts on average.
+
+
+#### First Picks Analysis
+
+Here we do a quick analysis of how first picks fare against the rest of the drafted competition across the past 23 NBA regular seasons
+
+```{r firstpick-filter, echo = FALSE}
+
+lot_1_div_data <- lottery_data %>%
+   mutate(
+      draft_type = case_when(
+       str_detect(draft_type, "lot_1") == TRUE ~ "first_pick",
+       str_detect(draft_type, "lot_1") == FALSE ~ "not_first_pick"
+     )
+   )
+
+
+# lot_div_data <- lottery_data %>%
+#     mutate(
+#        draft_type = case_when(
+#         draft_pick < 11  ~ "lottery",
+#         draft_pick > 11  ~ "non-lottery"
+#       )
+#     )
+
+sum_lot_1_div_data <- sum_data(lot_1_div_data)
+
+line_graph_stat(sum_lot_1_div_data, sum_lot_1_div_data$pts, "Points")
+
+line_graph_stat(sum_lot_1_div_data, sum_lot_1_div_data$ast, "Assists")
+
+line_graph_stat(sum_lot_1_div_data, sum_lot_1_div_data$trb, "Rebounds")
+```
+
+Even when comparing the first picks to everyone else, they generally outperform their drafted counterparts in these same box-score stat measures though recent years show a closing gap in these particular stats. 
+
+
+# Discussion
+
+In this section, we will discuss the results of our tests and models and their implications in the context of our question and also their broader implications and limitations. 
+
+### Comparing the Graphs & Overall Conclusions
+
+#### Graph Comparisons Discussion
+
+Overall, this excursion has shown the true value and durability that lottery picks have over their non-lottery picks counterparts. Even when comparing the first pick to everyone else, there is tremendous upside and reliability teams can bank on with these players as they tend to stay in the league longer and put forth a well-invested effort to each and every game. 
+
+### Shortcomings and Limitations
+
+These graphs are not without their faults however. 
+
+#### Limitation 1
+
+This is not a true comparison per player each year. As mentioned before, the 2000-2009 draft classes only have a select few players actively playing. Many career timelines have been cutoff well before the 2020s decade and because of the exhaustive use of averages, these numbers then become inflated drastically. It's not fair to compare three players who were drafted first, who player center, and average their rebounds for that season and then say that first picks destroy the boards better than any other pick because other picks may have only one player to compare against or 10 players where the average actually hurts their comparison in this case. Thus, career timelines are not actively considered here. 
+
+
+#### Limitation 2
+
+This fails to consider the positions at play here. Again, it is not a true comparison because in theory, there is a draft class that consists of only point guards whose job is to distribute the ball and inherently rack up assists. Likewise, there is also a draft class that consists of only centers whose job it is to crash the glass and inherently rack up rebounds. So, it is not a fair comparison to compare these two draft classes on assists and rebounds because they are not by the same position and their statline would reflect this. 
+
+
+### Alternate Approaches
+
+#### Alternate Approach 1
+
+One alternate approach would be to conduct the same analysis but factor in position. Compare each player of the same draft class and season but also the same position so that the stat comparisons would be much better. 
+
+#### Alternate Approach 2
+
+Another alternate approach would be to further filter the data set to include matching career timelines and compare against those. While the dataset maybe limited in terms of number of players, it would provide a better comparison route as the comparisons avoid stat inflation from averaging, Clarity would also be improved.  If this approach is taken, the graphs could be better understood as a career comparison and not a year-by-year comparison of year-by-year draft classes. These graphs are meant to convey careers-to-date and not show how each year's draft class fares against one another. But the current graphs can lead to that misleading conclusion. 
+
+
+ 
+### Potential Future Directions
+
+One future direction to take this analysis would be to scrap a new data set of each year's draft class and compare the players within each draft-class against one another. For example, compare how lottery players of the 2022 Draft Class are doing against non-lottery players of the 2021 Draft Class. 
+
+
+# References
