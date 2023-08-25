@@ -15,7 +15,6 @@ body {
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate) # to extract the year
-library(readxl) # this is to read in .xlsx data
 library(kableExtra) # this is to format our outputted tables
 ```
 
@@ -29,10 +28,10 @@ After the rather abysmal showing by the Jayhawks against Texas in the 2023 Big 1
 
 # Formatting our Data
 
-I'll begin by first loading in the raw data obtained from Sports Reference and then imported and formatted in Excel. To read this Excel File, I am using the `read_excel()` function from the `readxl` library
+I'll begin by first loading in the raw data obtained from Sports Reference^[https://www.sports-reference.com/cbb/schools/kansas/men/2023-gamelogs.html]
 ```{r get-ku-data}
 ## obtain the raw data from which we will obtain the points
-ku_raw_data <- read_excel("../data/kumbb23.xlsx")
+ku_raw_data <- read_csv("../data/kumbb23.csv")
 
 ##print out this data
 ku_raw_data
@@ -172,10 +171,11 @@ By this data alone, Kansas loses when they do not move the ball, or when they en
 
 # Conclusions and Extensions
 
-Overall, this was a fun project to work on. I actually tried to import the data directly from a link and use `rvest` library to unravel it but I encountered empty values and duplicate column names that I just could not work around. This project introduced me to how to import csv text to an Excel file and serve as my introduction to `readxl` as well. I also was able to use the `kableExtra` library to format my outputted summary data which I now know I will make extensive use of. 
+Overall, this was a fun project to work on. I actually tried to import the data directly from a link and use `rvest` library to unravel it but I encountered empty values and duplicate column names that I just could not work around. This project introduced me to how to import csv text to an Excel file and convert it to a csv for simplicity. I also was able to use the `kableExtra` library to format my outputted summary data which I now know I will make extensive use of. 
 
 As an extension of this project, I do want to learn to pivot this data to tidy format to visually graph this data. I hope to this in the very near future.  
 
 Another extension that would be interesting is to look at an opponent that Kansas has lost to frequently (i.e Texas) and investigate if their win/loss numbers correlate to the scores presented. 
 
-  
+
+# References
