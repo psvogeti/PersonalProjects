@@ -1,0 +1,416 @@
+---
+title: "NBA Game Pace"
+author: "Pranav Vogeti"
+date: "2023-07-04"
+output: html_document
+---
+
+```{css, echo=FALSE}
+body {
+  /*background-color: navy*/
+  background-color: papayawhip
+}
+/**
+h1 {
+  color: lightblue
+}
+
+h3 {
+  color: navajowhite
+}
+
+body {
+  color: floralwhite
+}*/ 
+```
+
+```{r message = FALSE, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+```
+
+# Introduction
+
+With the conclusion of the 2022-2023 NBA Season, and the crowning of the Denver Nuggets as this year's World Champions, I was interested to see if this season and latter seasons have demonstrated a change in gameplay from prior years. This report serves to investigate if there is a change in gameplay.
+
+### The Focus Question
+
+How has the pace of modern NBA basketball changed over time?
+
+### Motivation
+
+If one were to watch a modern NBA game, it would be drastically different than an NBA game in the 90s. One difference is that the three-point shot has profoundly changed the way the game is played, causing even big men to develop a decent perimeter shooting stroke to spread the floor. Another difference is that generally, games have been ridiculously high in team scores and general offensive efficiency. Finally, games "feel" quicker, less methodical and more shot-heavy. Collectively, this report builds on these "observations" to quantify these differences.
+
+# Background
+
+## Data Description
+
+### About the Original Data
+
+The **total possessions** and **total points** used in each dataset we will use was manually scraped together from *PBPStats*, a play-by-play data-fetching site produced by *Darryl Blackport*. Using these possession and point total data, [^1] the excel sheet was crafted by obtaining the total possession counts for each regular season and tabulating these values to a local excel file I created.
+
+[^1]: Blackport (2023). NBA Team Game Logs [Dataset; Website]. Scraped 2000-2023 Regular Season Data. <http://www.pbpstats.com/game-logs/nba/team>
+
+The **time of possession data** for the Boston Celtics 2013-14 to 2022-23 NBA regular seasons was manually scraped from the official stats section of *NBA.com* [^2]
+
+[^2]: NBA (2023). NBA Advanced Stats [Dataset; Website]. Scraped Player Tracking: Touches Data 2013-2023 regular seasons. <https://www.nba.com/stats/players/touches?PerMode=Totals&Season=2022-23&SeasonType=Regular%20Season&TeamID=1610612738&dir=A&sort=PLAYER_NAME>
+
+### The Key Variables
+
+-   The key variables from the NBA data set we will use for this excursion:
+
+    -   `DIVISION` the NBA division the team comes from
+    -   `SEASON` the NBA regular season of focus
+    -   `POSSESSIONS` the total number of possessions for this NBA team for that `SEASON`
+    -   `PTS` the total number of points for this NBA team for that `SEASON`
+
+-   The key variables from the Boston Celtics data set we will use for this excursion:
+
+    -   `Season` the NBA regular season of focus
+    -   `POSS` the total number of possessions for this NBA team for that `Season`
+    -   `POSS_TIME` the total aggregated player possession time for that `Season`
+
+    \`
+
+### Assumptions and Unusuality
+
+Total Possession Counts and therefore some point totals from *PBPStats* may be off compared to *NBA.com* stats because of difference in counting posessions. Statistically, possesion counts from *PBPStats* are lower compared to those on *NBA.com* however because of how small these differences are, for the sake of the analysis and for the scope at which the data is, we are choosing to ignore these minute differences. More information can be found here[^3]
+
+[^3]: Blackport, D. (2019). Why possession counts are lower on PBPStats than NBA stats. Less Certainty, More Inquiry. <https://darrylblackport.com/posts/2019-04-03-why-pbpstats-possession-counts-lower/>
+
+### Report Intentions
+
+The rest of this report will focus on analyzing how possession play has changed over time throughout the NBA and through the Boston Celtics.
+
+# Analysis
+
+### Data Cleanup
+
+Here the sourced data is cleaned up to fit our needs. A preview of the data we will use is separately printed out to get a sense of what it looks like.
+
+```{r read-clean, echo = FALSE}
+bos_poss_time_data <- read.csv("../data/bos_poss_time_data.csv")
+nba_poss_pts_data <- read.csv("../data/nba_poss_pts_data.csv")
+
+nba_poss_pts_clean <- nba_poss_pts_data %>%
+  filter(POSSESSIONS != "NA" | PTS != "NA") %>%
+  rename(
+    division = DIVISION, 
+    team = TM,
+    season = SEASON,
+    num_poss = POSSESSIONS,
+    pts = PTS
+  ) %>% 
+  mutate(
+    conference = case_when(
+      division == "Atlantic" ~ "Eastern",
+      division == "Southeast" ~ "Eastern",
+      division == "Central" ~ "Eastern",
+      division == "Pacific" ~ "Western",
+      division == "Northwest" ~ "Western",
+      division == "Southwest" ~ "Western",
+    )
+  )
+
+bos_poss_time_clean <- bos_poss_time_data %>% 
+  select(Player, Season, Record, TM, GP, W, L, MIN_PLAYED, PTS, POSS, POSS_TIME)  %>% 
+  rename(
+    player = Player,
+    season = Season,
+    record = Record,
+    team = TM, 
+    gms_played = GP, 
+    wins = W, 
+    losses = L, 
+    min_played = MIN_PLAYED, 
+    pts = PTS,
+    num_poss = POSS, 
+    plyr_poss_time = POSS_TIME
+  )
+```
+
+```{r display-clean-data}
+## the complete NBA Possession-Point data preview
+head(nba_poss_pts_clean, 10)
+
+
+## the Boston Celtics Possession Time data preview
+head(bos_poss_time_clean, 10)
+```
+
+```{r constants}
+REG_SEASON_GMS = 82
+NBA_LOCKOUT_SEASON_GMS = 66
+
+# 22 teams in the bubble played 71-75 gms --> mean = 73 (22/30 = 0.7333)
+# 8 teams not in the bubble played 63-67 gms --> mean = 65 (8/30 = 0.2667)
+# Weighted Average = [(73 * 0.7333) + (65 * 0.2667)] / (0.7333 + 0.2667) = 70.8664 ~ 71
+# Cite: https://en.wikipedia.org/wiki/2019%E2%80%9320_NBA_season
+BUBBLE_YR_GMS_AVG = 71
+
+COVID_YR_GMS = 72
+SEC_IN_MIN = 60
+```
+
+```{r group-data}
+nba_avgs_div <- nba_poss_pts_clean %>%
+  group_by(season, division) %>%
+  summarize(
+    avg_pts = mean(pts),
+    avg_poss = mean(num_poss),
+    avg_pts_per_poss = mean(pts/num_poss),
+    avg_poss_per_gm = case_when(
+      season == "2011-12" ~ mean(num_poss/NBA_LOCKOUT_SEASON_GMS),
+      season == "2019-20" ~ mean(num_poss/BUBBLE_YR_GMS_AVG),
+      season == "2020-21" ~ mean(num_poss/COVID_YR_GMS),
+      TRUE ~ mean(num_poss/REG_SEASON_GMS)
+    )
+  )
+
+nba_avgs_conf <- nba_poss_pts_clean %>%
+  group_by(season, conference) %>%
+  summarize(
+    avg_pts = mean(pts),
+    avg_poss = mean(num_poss),
+    avg_pts_per_poss = mean(pts/num_poss),
+    avg_poss_per_gm = case_when(
+      season == "2011-12" ~ mean(num_poss/NBA_LOCKOUT_SEASON_GMS),
+      season == "2019-20" ~ mean(num_poss/BUBBLE_YR_GMS_AVG),
+      season == "2020-21" ~ mean(num_poss/COVID_YR_GMS),
+      TRUE ~ mean(num_poss/REG_SEASON_GMS)
+    )
+  )
+
+```
+
+```{r graph-functions}
+graph_stat <- function(mydf, stat, stat_label, grp) {
+  ggplot(mydf, aes(x = season, y = {{stat}}, color = {{grp}}, group = {{grp}})) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) + 
+    geom_smooth(aes(group = 1)) +
+    guides(x = guide_axis(angle = 90)) +
+    xlab("NBA Regular Season") +
+    ylab(stat_label) +
+    ggtitle(paste(stat_label, "| NBA Regular Seasons 2000-2023")) +
+    theme_linedraw() 
+}
+```
+
+### Data Summaries
+
+Here we will display a quick summary table to get a sense of any trends in our data. Specifically, we will look at the NBA data as the Boston Celtics Data will be analyzed separately.
+
+```{r data-summaries, echo = FALSE}
+nba_poss_pts_sum <- nba_poss_pts_clean %>%
+  group_by(season) %>%
+  summarize(
+    avg_poss = mean(num_poss),
+    avg_pts = mean(pts),
+  )
+
+
+# cleanly output this summary
+nba_poss_pts_sum %>%
+    kable() %>%
+     kable_styling(
+        position = "left",
+        full_width = FALSE,
+        bootstrap_options = c("bordered", "condensed", "striped"),
+     )
+```
+
+Upon several quick glances we see that generally, for roughly the same number of possessions, more points are being scored over time. However, the average number of possessions have stayed relatively the same at around 7550 possessions till the 2014-15 season when the number of possessions have jumped to roughly 7900 possessions from the 2015-16 season onwards. This shows generally, more points are being scored at more possessions, an indicator of faster gameplay.
+
+### Analysis: Box Score Statlines
+
+Here we will dive into a closer look at just how today's gameplay has changed since nearly two decades ago. We will look at inter-division comparisons and conference comparisons to also understand competitive response in the NBA.
+
+#### Average Total Points Scored
+
+This section will look at division and conference **average point totals** from the 2000-01 regular season through the 2022-23 regular season.
+
+```{r graph-points}
+graph_stat(nba_avgs_div, avg_pts, "Average Season Total Points", division)
+graph_stat(nba_avgs_conf, avg_pts, "Average Season Total Points", conference)
+```
+
+In rather noisy graphs, we can see that generally more points are being scored in the same 48-minute play period. From the 2000-01 regular season to the 2022-2023 regular season, the gap between these endpoint seasons is roughly 1200 points as evidenced by the blue trend line. This is probably attributed to the rise of the three point jumpshot and how much more freeform offenses have become in today's game.
+
+With competitive response, it's evident that the Pacific Division has been dominant in high octane offense. However, as distant as their gap is to the other divisions, the gap begins to tightly close and fluctuate with other divisions all while average point totals rise, signifying a league-wide response to prioritize highly efficient offenses.
+
+#### Average Total Possessions Played
+
+This section will look at division and conference **average possession totals** from the 2000-01 regular season through the 2022-23 regular season.
+
+```{r graph-possessions}
+graph_stat(nba_avgs_div, avg_poss, "Average Season Total Possessions", division)
+graph_stat(nba_avgs_conf, avg_poss, "Average Season Total Posessions", conference)
+
+```
+
+In this set of noisy graphs, we see across divisions and across conferences that there are more possessions being played in recent years than past years. Between the endpoint seasons of 2000-01 and 2022-23 show an average gap of 300 more possessions played as evidenced by the blue trend line. The only way this can happen is if less time is spent per possession. This means that this graph is an indicator that the NBA is a faster game than it was decades ago.
+
+In terms of competitive response, we can see that in the divisional graph, the close cluster of the data show how resilient each division is to keep up with competition. For example, the Southwest division is consistently towards the bottom up until the 2012-13 season, where they climb their way up to the top ranks by 2022-23.
+
+#### Average Points per Possession
+
+As discussed before, more points have been scored in the same time, and more possessions have been played in the same time. However, to achieve a deeper understanding, have more points been scored per possession? If this is the case, not only is it an indication that more shots are being taken from the three point line, but it also suggests that current offenses are more aggressive with their shot creation.
+
+So, in this section, we will graph the **average points per possession** over time to investigate this context.
+
+```{r graph-points-per-poss}
+graph_stat(nba_avgs_div, avg_pts_per_poss, "Average Points Per Possession", division)
+graph_stat(nba_avgs_conf, avg_pts_per_poss, "Average Points Per Possession", conference)
+```
+
+In these graphs, we see a dramatic increase in points scored per possession. On average, by looking at the blue trendline, today's NBA witnesses 1.15 points scored per possession compared to the NBA seen in the early 2000s, at around 1.02 points scored per possession. Such an increase can be attributed to the rise of the three point shot and the rise of potent offensive-oriented teams donning aggressive playmaking. These two inferences, coupled together with the increase in average points scored and possessions played, show strong reasoning for a quicker game.
+
+With the divisional graph, it's hard not to notice how tightly packed these divisions are in efficient scoring. No one division has a clear dominance in this stat than the other, showing just how competitive and evolution-focused these teams are when it comes to instant offense.
+
+#### Possessions Per Game
+
+Before moving onto the case study, it would be worth it to see how the number of **average possessions per game** have changed over time. This graph would help establish a per game statistic that gives a clearer idea of pace change.
+
+```{r graph-poss-per-gm}
+graph_stat(nba_avgs_div, avg_poss_per_gm, "Average Possessions Per Game", division)
+graph_stat(nba_avgs_conf, avg_poss_per_gm, "Average Possessions Per Game", conference)
+```
+
+Here we get the same shaped graphs as our average possessions graph, just scaled by a factor of the number of regular season games played for that season to account for each game played per season and also to appropriately consider the anomaly years of 2011-12, 2019-20, and 2020-21. Regardless, what is noticeable is that by the blue trend line, each team plays 8 more possessions per game in today's NBA than in prior years such as the 2000-01 NBA regular season.
+
+### Analysis: Boston Celtics Case Study
+
+Here, we will use the Boston Celtics Regular Season Data to get an even more detailed understanding of NBA gameplay changes. This data set will analyze the Boston Celtics Time of Possession data to attribute a numeric to the discussed basketball pace.
+
+#### Why Boston?
+
+The Boston Celtics are a franchise that is storied on success, explosiveness, and consistent winning culture. With as many championships and top-tier consistency in terms of regular season performance, this team is an excellent model team to analyze for this excursion.
+
+#### Time of Possession Analysis
+
+Here we will look at how the **time of possession** has changed over time and **time spent per possession** evolution of the Boston Celtics.
+
+Below is the **Time of Possession** Calculation:
+
+-   `i` is a counter meant to represent each player
+-   `n` is represents the total number of players on the roster
+-   `TOP` is the total possession time per game for that season
+-   `PPT` is the player total possession time for that season
+
+$$
+TOP = \sum_{i = 1}^n {(PPT)_i}
+$$
+
+Below is the **Time Per Possession** Calculation:
+
+-   `TPP` is the time per possession for that season
+-   `TPT` is total possession time for that season
+-   `POSS` is the total number of possessions for that season
+
+$$
+TPP = \frac {TPT} {POSS} * \frac {60\text{ seconds}} {1\text{ minute}}
+$$
+
+```{r bos-time-poss}
+bos_poss_time_totals <- bos_poss_time_clean %>%
+  select(player, season, num_poss, plyr_poss_time) %>%
+  group_by(season) %>%
+  summarize(
+    tm_poss_time = sum(plyr_poss_time), 
+    total_poss = mean(num_poss)
+    ) %>%
+  mutate(
+    poss_time_per_gm = case_when(
+      season == "2019-20" ~ tm_poss_time / BUBBLE_YR_GMS_AVG,
+      season == "2020-21" ~ tm_poss_time / COVID_YR_GMS,
+      TRUE ~ tm_poss_time / REG_SEASON_GMS
+    ),
+    time_per_poss = (tm_poss_time / total_poss) * SEC_IN_MIN,
+  )
+```
+
+```{r bos-time-of-poss-graph}
+ggplot(bos_poss_time_totals, aes(x = season, y = poss_time_per_gm)) +
+    geom_line(linewidth = 1, color = "#007A33", group = 1) +
+    geom_point(size = 3, color = "#007A33") + 
+    guides(x = guide_axis(angle = 90)) +
+    xlab("NBA Regular Season") +
+    ylab("Time of Possession Per Game (Minutes)") +
+    ggtitle("Boston Celtics Time of Possession", 
+            subtitle =  "NBA Regular Seasons 2013-2023") +
+    theme_linedraw() 
+```
+
+In hindsight, this may not be the best graph for this topic but it does give an idea that the Celtics only spend anywhere between 20 - 21 minutes per game with the ball. This stat may be a reflection of ball dominance rather than game pace but it shows the quick nature that the Celtics employ for their game.
+
+```{r bos-time-per-poss-graph}
+ggplot(bos_poss_time_totals, aes(x = season, y = time_per_poss)) +
+  geom_line(linewidth = 1, color = "#007A33", group = 1) +
+  geom_point(size = 3, color = "#007A33") + 
+  guides(x = guide_axis(angle = 90)) +
+  xlab("NBA Regular Season") +
+  ylab("Average Time Per Possession (Seconds)") +
+  ggtitle("Boston Celtics Time Spent Per Possession", 
+          subtitle =  "NBA Regular Seasons 2013-2023") +
+  theme_linedraw() 
+```
+
+This graph, in addition to illustrating evolution of pace, bolsters the time of possession graph. For one, it shows that past the 2013-14 season, the Celtics have been hovering around 12.75 seconds per possession with a low of less than 12 seconds in the 2015-16 season. Given that the allowed time per possession is 24 seconds, more often than not the Celtics play with half that time or slightly less and that is evident in the Time of Possession graph as well.
+
+# Discussion
+
+In this section, we will discuss the results of our tests and models and their implications in the context of our question and also their broader implications and limitations.
+
+### Comparing the Graphs & Overall Conclusions
+
+#### Graph Comparisons Discussion
+
+Overall, we looked at average totals for points, possessions, average points per possession, and average possessions per game. We then looked at the Boston Celtics time of possession and time per possession data to see our results at a functional scale.
+
+In terms of the average total graphs, aside from the unusual years of 2011-12, 2019-20, and 2020-21, we witnessed a general appreciable increase in:
+
+-   **total points scored per season** (between 2000 and 2023, an increase of about 1000 points)
+-   **total possessions played** (between 2000 and 2023, an increase of about 300 possessions played)
+-   **points per possession** (between 2000 and 2023, an increase of about 0.13 additional points scored per possession)
+-   **possessions per game** (between 2000 and 2023, an increase of about 8 possessions played per game)
+
+In terms of the Boston Celtics, we saw that in the last decade, they spend close to half or less than half of their available possession time on offense. Time of possession averaged between 20-21 minutes, and time per possession averaged around 12.75 seconds per possession, coming from 13 seconds in 2013-14. Yet, they are able to sustain tremendous winning records, illustrating their evolution to the modern pace of the game.
+
+Taken together, the data blend to show that indeed more offense is played at rates faster than before. Scoring, team possessions, efficiency have all increased over the years for the same 48-minute game. Likewise, possession time has stayed relatively low as seen by the Boston Celtics past decade data. These show that the modern pace of the NBA is faster than the early days of the NBA.
+
+### Shortcomings and Limitations
+
+This data collection is limited in terms of its analysis however
+
+#### Limitation 1: Averages
+
+One major operation this data heavily relies on is averages. While it is a great way to obtain a centralized number that centrally characterizes all extremes of the data, it does not account for the anomaly years that account for the severe dips noticed in the early graphs. For instance, 2011-12 is averaged by total points and total possessions in the same way it is for 2017-18. However, 2011-12 only saw NBA teams play 66 games instead of the typical 82 games like 2017-18 season did. Thus, 2011-12 is unfairly compared against the rest by this blanket average.
+
+#### Limitation 2: Anomaly Years
+
+Building on the previous limitation, NBA Regular Seasons 2011-12, 2019-20, 2020-21 all share one fact: they did not play the same number of games as a typical NBA regular season. 2011-12 saw 66 games, 2019-20 saw teams play anywhere between 63-75 games for the regular season, and 2020-21 saw 72 games. These graphs do not directly account for these anomalies.
+
+### Alternate Approaches
+
+#### Alternate Approach 1
+
+One alternative approach would be to look at these same stats on a per-game basis and then compare them, as done with the Possessions Per Game graph. In that way, the issue of the anomaly years would be addressed appropriately.
+
+#### Alternate Approach 2
+
+Another way to approach this is to take the available per game data instead of season totals and plot those data instead to get a clearer understanding. In this way, sourcing issues would not arise. As mentioned before, possession counts are not the same between NBA data and PBP data and as a result, these graphs lose some consistency in their calculated outputs. So, by taking per game data and calculating off of that, this issue would not arise and no precision is lost.
+
+### Potential Future Directions
+
+#### Future Direction 1
+
+One option is to investigate how integral the three point shot has become over time. This shot is mentioned as a strong influence several times but not investigated in this report. Investigating this aspect of the game may bolster this report and its evidence-based claims.
+
+#### Future Direction 2
+
+Another option is to investigate the defensive response aspect to the game. Are defenses letting offenses shoot rather than drive to the rim? If so, this may be evidence to show that offenses are willing to risk a shot farther away from the hoop and therefore take less time on possessions to do so. Are more turnovers being committed? If so, then this may be a sign that offenses are becoming more looser and freeform with playmaking, explaining the rather small time offenses take per possession. What shots are coming from where? The answers to these questions will help provide context to the stats presented in this report.
+
+# References
