@@ -1,0 +1,121 @@
+---
+title: "Wisconsin Basketball Points"
+author: "Pranav Vogeti"
+date: "2023-02-03"
+output: html_document
+---
+
+```{r message = FALSE, include = FALSE}
+# notice this chunk does not show up in knitted html file
+library(tidyverse)
+library(lubridate) # to extract the year
+library(rvest) # this is for the read_html and html_table functions. May have to install it.
+```
+
+Objective: To obtain visual representations of Wisconsin's points against various variables and obtain a greater understanding of factors of those points. 
+
+
+
+We begin by feeding in the link from sports reference which contains the data set we will use to get points scored per game over the course of the season.
+```{r get-raw-data}
+## obtain the raw data from which we will obtain the points
+wi_raw_data = html_table(read_html("https://www.sports-reference.com/cbb/schools/wisconsin/men/2023-gamelogs.html#sgl-basic"))
+
+##output the raw data
+wi_raw_data
+```
+
+We now have the raw data in `wi_raw_data`. But it is currently in the form of a list. The first entry in this list provides us a 34 x 40 tibble containing all of the information we have about Wisconsin's games for the 2022-2023 season. So we must retrieve this first entry. 
+
+```{r fetch-game-data}
+##index to the first entry of this list to retrieve the current season game log
+wi_game_log <- wi_raw_data[[1]]
+
+##output the game log
+wi_game_log
+```
+### Getting Points over Games Played
+
+Now we just have the 34 x 40 tibble in `wi_game_log`. From here we can filter out what we want. But there is just one noticeable issue: our first row contains our column headers. The end result should just be a table of the game number and the points scored for that game, and the table should contain appropriate column headers. So, we set row 1 (the row that contains the column headers) as the column headers for the game log, and then we filter our data to our desired variables accordingly. 
+
+```{r filter-game-data}
+#sets the first row of the tibble (a 1 x 40 tibble vector) to be the column headers for our data. 
+colnames(wi_game_log) = wi_game_log[1,]
+
+ 
+##create the game-point log
+wi_point_game_log <- wi_game_log %>% 
+  ##look for only the columns with the 'G' and 'Tm' column heading
+  select(G, Tm, 'W/L') %>%
+  ##rename the 'G' column heading as the "Game" column heading
+  rename("Game" = G, "Points" = Tm) %>%
+  ##every 20 games, sports reference adds a separator row with empty data
+  ##We filter out any instance where we have a row containing empty data
+  ##We also filter out any row instance where we have the "Tm" column heading"
+  filter(Points != "" & Points != "Tm") %>%
+  ##currently, the points are of type character. We want them as numbers to fiddle with. 
+  mutate (
+   Points = as.numeric((Points)),
+   Game = as.numeric((Game))
+  )
+##output the newly filtered data
+head(wi_point_game_log)
+```
+
+Now we have our point-game log in `wi_point_game_log`, so we begin graphing!
+
+
+### Points Scatterplots
+```{r graphs}
+#scatterplot of the points scored
+ggplot(wi_point_game_log, 
+       aes(x = Game, y = Points)
+       ) + geom_point() + geom_vline(xintercept = 13, color = "red", linetype = "dotted")
+
+
+#line graph of the points scored
+ggplot(wi_point_game_log, aes(x = Game, y = Points)) + geom_line() + geom_point() +
+geom_vline(xintercept = 13, color = "red", linetype = "dotted")
+
+#NOTE: the red dotted line indicates when conference play has begun
+
+```
+
+A more informative graph would also contain information about how these points occurred. For this case, we decide to also color coordinate the wins and losses for the data set. 
+
+-Let's first create the data set to deal with
+
+```{r win-loss-set creation}
+colnames(wi_game_log) = wi_game_log[1,]
+
+wi_win_loss_points <- wi_game_log %>%
+  select(G, Tm,"W/L") %>%
+  rename("Game" = G,
+         "Points" = Tm, 
+         "Result" = "W/L") %>%
+  filter(Points != "" & Points != "Tm") %>%
+  mutate(
+    Game = as.numeric(Game),
+    Points = as.numeric(Points),
+   )
+head(wi_win_loss_points)
+```
+
+Now we have our new set of data, we can now graph this set!
+
+```{r new-graphs}
+ggplot(wi_win_loss_points, aes(x = Game, y = Points)) + 
+  geom_line(aes(color = "black")) + 
+  geom_point(aes(color = str_sub(Result, 1, 1)), size = 4) +
+  scale_color_manual(values = c("W" = "white", "L" = "red"), name = "test title") +
+ theme(panel.background = element_rect(fill = 'tan', color = 'black')) +
+  xlab("Game Number") +
+  ylab("Points Scored") +
+  ggtitle("Wisconsin Basketball: Points Per Game", 
+          subtitle = "2022-2023 Season" )
+  
+```
+
+
+
+
