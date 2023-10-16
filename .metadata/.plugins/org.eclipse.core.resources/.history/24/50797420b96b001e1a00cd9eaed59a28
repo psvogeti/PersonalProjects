@@ -1,0 +1,18 @@
+/**
+ * This class runs the Shopping List program and works with user generated input
+ * to execute the appropriate tasks
+ * @author 715st
+ *
+ */
+public class Main {
+
+	/**
+	 * Runs the Shopping List program
+	 * @param args unused
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

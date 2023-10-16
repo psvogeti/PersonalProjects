@@ -11,7 +11,20 @@ public class ShoppingList implements ListADT<Item>{
 	private int size; 
 	private ItemNode headItemNode;
 	private ItemNode tailItemNode;
+	private String shoppingListName; 
 	
+	
+	public ShoppingList(String shoppingListName) {
+		this.shoppingListName = shoppingListName;
+	}
+	
+	/**
+	 * Getter for this Shopping List's name
+	 * @return this shopping list's name
+	 */
+	public String getName() {
+		return this.shoppingListName;
+	}
 	/**
 	 * Returns the size of this Shopping List
 	 * @return the size of this Shopping List
@@ -214,15 +227,24 @@ public class ShoppingList implements ListADT<Item>{
 	 */
 	@Override
 	public void add(Item newItem, int index) {
-		//TODO: Index out of bounds if index < 0 and index > size
-		//CASE: INDEX = 0 --> addFirst() //also handles empty list cases
+		//CASE: Index out of bounds if index < 0 and index > size
 		if (index < 0 || index > size) {
 			throw new IndexOutOfBoundsException("ERROR: Invalid Index Supplied");
-		} else if (index == 0 || isEmpty()) {
+			
+		//CASE: We already have this item, so adjust the quantity (non-empty only)		
+		} else if (size() > 0 && contains(newItem)) {
+			adjustQuantity(newItem);	
+			
+		//CASE: INDEX = 0 --> addFirst() & also handles empty list cases	
+		} else if (index == 0 || isEmpty()) { 
 			addFirst(newItem);
-		} else if (index == size) { //CASE: INDEX = SIZE --> addLast()
-			addLast(newItem); //also handles empty list cases
-		} else { //CASE: [0 < INDEX < SIZE]
+			
+		//CASE: INDEX = SIZE --> addLast() & also handles empty list cases	
+		} else if (index == size) { 
+			addLast(newItem);
+		
+		//CASE: [0 < INDEX < SIZE]
+		} else { 
 			ItemNode itemNodeToAdd = new ItemNode(newItem);
 			ItemNode shoppingListItemNode = headItemNode;
 			int indexCounter = 0;
@@ -251,6 +273,37 @@ public class ShoppingList implements ListADT<Item>{
 				shoppingListItemNode = shoppingListItemNode.getNextItemNode();
 			}
 		}
+	}
+	
+	/**
+	 * A private helper method that is designed to handle the case where 
+	 * a user of this application may already enter an item that is in this list. If that
+	 * is the case, we can adjust the quantity as needed of the item in the original
+	 * shopping list. For example, if the following item is already in this list and the user attempts
+	 * to add this item again, we simply adjust the quantity to reflect this request.  
+	 * <p>
+	 * Request: [CHOCOLATE | 4 | $0.50 | WANT] 
+	 * Before (in the list):
+	 * </p>
+	 * <p>
+	 * [CHOCOLATE | 1 | $0.50 | WANT]
+	 * </p>
+	 * 
+	 * <p>
+	 * After (updated list):
+	 * </p>
+	 * <p>
+	 * [CHOCOLATE | 5 | $0.50 | WANT]
+	 * </p>
+	 * @param duplicateItem the duplicate item whose quantity will be added to 
+	 * its pre-existing item in this list
+	 */
+	private void adjustQuantity(Item duplicateItem) {
+		int duplicateItemQuantity = duplicateItem.getQuantity();
+		int indexOfItemInList = indexOf(duplicateItem);
+		Item itemInList = get(indexOfItemInList);
+		int itemInListQuantity = itemInList.getQuantity();
+		itemInList.setQuantity(duplicateItemQuantity + itemInListQuantity);
 	}
 
 	/**

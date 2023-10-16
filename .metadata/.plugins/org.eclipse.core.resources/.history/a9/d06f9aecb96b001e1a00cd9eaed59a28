@@ -1,0 +1,75 @@
+import java.util.Scanner;
+
+/**
+ * This class runs the Shopping List program and works with user generated input
+ * to execute the appropriate tasks
+ * @author 715st
+ *
+ */
+public class Main {
+
+	/**
+	 * Runs the Shopping List program
+	 * @param args unused
+	 */
+	public static void main(String[] args) {
+		Scanner scanner = new Scanner(System.in);
+        boolean applicationOn = true;
+
+        String welcome = "Welcome to the Song Searcher App! What would you like to do?";
+        String csv = "1) Create a new Shopping List";
+        String playlistDanceability = "2) Get Playlist Danceability Score";
+        String songsWithDanceability = "3) Get Songs with a Specific Danceability Score";
+        String exit = "4) Exit the Application";
+
+        String mainMenuStr = welcome + "\n" + csv + playlistDanceability + "\n" + songsWithDanceability + "\n" + exit;
+
+        while (applicationOn) {
+            System.out.println(mainMenuStr);
+            if (scanner.hasNextInt()) {
+                int userRequest = scanner.nextInt();
+                if (userRequest >= 1 && userRequest < 5) {
+                    switch (userRequest) {
+                        case 1:
+                            System.out.println("Please provide the file path");
+                            if (scanner.hasNext()) {
+                                String filepath = scanner.next();
+                                File userFile = new File(filepath);
+                                try {
+                                    readUserPlaylist(userFile);
+                                    returnToMainMenu();
+                                } catch (FileNotFoundException fnfE) {
+                                    fnfE.getMessage();
+                                }
+                            }
+                            break;
+                        case 2:
+                            displayAverageDanceabilityScore();
+                            returnToMainMenu();
+                            break;
+                        case 3:
+                            System.out.println("Please provide the danceability score");
+                            if (scanner.hasNextInt()) {
+                                int danceScore = scanner.nextInt();
+                                displaySongsWithDanceability(danceScore);
+                                returnToMainMenu();
+                            }
+                            break;
+                        case 4:
+                            scanner.close();
+                            applicationOn = false;
+                            break;
+                    }
+                } else {
+                    throw new InputMismatchException("Input must be an integer from 1-4");
+                }
+            }
+        }
+
+        //return the main menu string just to verify that we are on the main menu
+        return mainMenuStr;
+    }
+
+	}
+
+}

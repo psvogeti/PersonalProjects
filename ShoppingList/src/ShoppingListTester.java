@@ -388,7 +388,7 @@ public class ShoppingListTester {
 	 * @return true if all tests pass, false otherwise
 	 */
 	private static boolean testInvalidShoppingListCalls() {
-		ShoppingList emptyShoppingList = new ShoppingList();
+		ShoppingList emptyShoppingList = new ShoppingList("empty");
 		Item firstItem = new Item("First", 1, 1.025, ItemPriority.WANT);
 		
 		
@@ -490,7 +490,7 @@ public class ShoppingListTester {
 	 * @return true if all tests pass, false otherwise
 	 */
 	private static boolean testAddFirst() {
-		ShoppingList shoppingList = new ShoppingList();
+		ShoppingList shoppingList = new ShoppingList("addFirst");
 		
 		
 		Item firstItem = new Item("First", 1, 1.00, ItemPriority.WANT);
@@ -672,7 +672,7 @@ public class ShoppingListTester {
 	 * @return true if all tests pass, false otherwise
 	 */
 	private static boolean testAddLast() {
-		ShoppingList shoppingList = new ShoppingList();
+		ShoppingList shoppingList = new ShoppingList("addLast");
 		
 		
 		Item firstItem = new Item("First", 1, 1.00, ItemPriority.WANT);
@@ -831,7 +831,7 @@ public class ShoppingListTester {
 	 * @return true if all tests pass, false otherwise
 	 */
 	private static boolean testAdd() {
-		ShoppingList shoppingList = new ShoppingList();
+		ShoppingList shoppingList = new ShoppingList("add");
 		
 		Item zerothItem = new Item("Zeroth", 1, 0.01, ItemPriority.URGENT);
 		Item firstItem = new Item("First", 1, 1.02333, ItemPriority.WANT);
@@ -971,7 +971,7 @@ public class ShoppingListTester {
 	 * @return true if all tests pass, false otherwise
 	 */
 	private static boolean testDelete() {
-		ShoppingList shoppingList = new ShoppingList();
+		ShoppingList shoppingList = new ShoppingList("delete");
 		
 		Item firstItem = new Item("First", 1, 1.02333, ItemPriority.WANT);
 		Item secondItem = new Item("Second", 2, 2.94053, ItemPriority.NEED);
@@ -1165,7 +1165,7 @@ public class ShoppingListTester {
 		//First, create the list and the items to go into the list
 		//and add as necessary
 		
-		ShoppingList shoppingList = new ShoppingList();
+		ShoppingList shoppingList = new ShoppingList("clear");
 		
 		Item firstItem = new Item("First", 1, 1.02333, ItemPriority.WANT);
 		Item secondItem = new Item("Second", 2, 2.94053, ItemPriority.NEED);
@@ -1212,7 +1212,7 @@ public class ShoppingListTester {
 	 */
 	private static boolean testSortShoppingList() {
 		//EXPECTED SORTED ORDER IS ALWAYS: [1] -> [2] -> [3] -> [4] -> [5] -> [6] -> null
-		ShoppingList shoppingList = new ShoppingList();
+		ShoppingList shoppingList = new ShoppingList("sort");
 		
 		//Create all items and add out of order to the shopping list to test
 		Item firstItem = new Item("Urgent First", 1, 10, ItemPriority.URGENT);
@@ -1347,7 +1347,8 @@ public class ShoppingListTester {
 	 * @return true if all the tests pass, false otherwise
 	 */
 	private static boolean testReverseShoppingList() {
-		ShoppingList shoppingList = new ShoppingList();
+
+		ShoppingList shoppingList = new ShoppingList("reverse");
 		
 		//Create all items and add out of order to the shopping list to test
 		Item firstItem = new Item("Urgent First", 1, 10, ItemPriority.URGENT);
@@ -1477,6 +1478,80 @@ public class ShoppingListTester {
 		return true;
 	}
 	
+	
+	
+	/**
+	 * Tests the add() case of adding a duplicate item to a Shopping List
+	 * @return true if all tests pass, false otherwise
+	 */
+	private static boolean testAddingDuplicates() {
+		//First, create the list and the items to go into the list and add as necessary			
+		ShoppingList shoppingList = new ShoppingList("duplicates");
+		
+		Item firstItem = new Item("First", 1, 1.02333, ItemPriority.WANT);
+		Item secondItem = new Item("Second", 2, 2.94053, ItemPriority.NEED);
+		Item thirdItem = new Item("Third", 3, 3.34, ItemPriority.URGENT);
+		
+		shoppingList.add(firstItem, 0);
+		shoppingList.add(secondItem, 1);
+		shoppingList.add(thirdItem, 2);
+		
+		//Create the duplicates of each item we added
+		Item firstDupe = new Item("First", 1, 1.02333, ItemPriority.WANT);
+		Item secondDupe = new Item("Second", 2, 2.94053, ItemPriority.NEED);
+		Item thirdDupe = new Item("Third", 3, 3.34, ItemPriority.URGENT);
+		
+		//It should not matter what index we add these dupes as  
+		//we should just adjust the quantity of the current items
+		shoppingList.add(firstDupe, 0);
+		shoppingList.add(secondDupe, 0);
+		shoppingList.add(thirdDupe, 0);
+		
+		//Test 1: Test structure (no dupes)
+		{
+			Item[] expectedItemOrder = new Item[] 
+					{firstItem, secondItem, thirdItem};
+			
+			//inherently, we get test size = 3 since we should not go beyond this
+			for (int i = 0; i < shoppingList.size(); i++) {
+				Item itemToCheck = shoppingList.get(i);
+				if (!itemToCheck.equals(expectedItemOrder[i])) {
+					System.out.println("EXPECTED: " + expectedItemOrder[i]);
+					System.out.println("ACTUAL: " + itemToCheck);
+					return false;
+				} 
+			}
+			
+		}
+		
+		//Test 2: Verify Item Quantities after "adding" the dupes
+		{
+			int expectedFirstItemQuantity = 2;
+			int expectedSecondItemQuantity = 4;
+			int expectedThirdItemQuantity = 6;
+			
+			int actualFirstItemQuantity = firstItem.getQuantity();
+			int actualSecondItemQuantity = secondItem.getQuantity();
+			int actualThirdItemQuantity = thirdItem.getQuantity();
+			
+			if (expectedFirstItemQuantity != actualFirstItemQuantity) {
+				return false;
+			}
+			
+			if (expectedSecondItemQuantity != actualSecondItemQuantity) {
+				return false;
+			}
+			
+			if (expectedThirdItemQuantity != actualThirdItemQuantity) {
+				return false;
+			}
+		}
+		
+		//if we reach here, all of our test cases pass
+		return true;
+	}
+
+	
 	/**
 	 * Runs all tests of the Shopping List Program and its functionalities
 	 * and prints out the results of the tests
@@ -1495,6 +1570,7 @@ public class ShoppingListTester {
 		System.out.println("testClear: " + (testClear() ? "Pass" : "Failed"));
 		System.out.println("testSortShoppingList: " + (testSortShoppingList() ? "Pass" : "Failed"));
 		System.out.println("testReverseShoppingList: " + (testReverseShoppingList() ? "Pass" : "Failed"));
+		System.out.println("testAddingDuplicates: " + (testAddingDuplicates() ? "Pass" : "Failed"));
 	}
 
 }
