@@ -1,0 +1,238 @@
+---
+title: "Predicting the Free Throw"
+author: "Pranav Vogeti"
+date: "2023-11-22"
+output: html_document
+---
+
+```{r message = FALSE, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+```
+
+```{css, echo=FALSE}
+body {
+  background-color: papayawhip
+}
+```
+
+# Introduction
+
+As the new 2023-2024 NBA season kicks into gear, and as I am beginning to learn more about predictive modeling, I was interested in seeing if there was a way to model the NBA free throw within the context the shot is performed. That context includes but is not limited to, the timestamp at which the free throw was taken, the player that took the free throw, and whether it was off of a contested interior shot or a contested perimeter shot, or if it was part of the bonus reward.
+
+### The Focus Question
+
+How might the NBA free throw shot be modeled such that the model can provide better insight then the player's career average free throw?
+
+### Motivation
+
+When watching an NBA game, the viewer is exposed to many types of shots, each equipped with their own play to achieve that particular shot. One such shot is the famed dunk. Another is a layup. Additional shots include the mid-range, the three-point shot, and the focus of this report: the free-throw.
+
+The free throw is perhaps one of the most interesting shots in the game. The most obvious indicator is that it is by convention, *free*. When a free throw shot is taken, any and all play stops. The play clock pauses, fans become muted or monsters depending on what team is taking the shot, and if taken at the right moments, can prove to be pivotal indicators on a team's chances of winning in close games.
+
+What spurs this investigation? The fact is, it is a **KNOWN** shot. Everybody, regardless of what age you are, how many years you have played, how skilled or talented you are, takes the exact same shot at the exact same point on the line. It is the only shot in the game that is known by every player. However, basing the free throw off of its known attributes ignores the true complexity behind the shot. It is a rather simple shot to learn and prepare for. The difficulty lies in the context at which it is taken.
+
+For instance, a free throw in the opening minutes of a game, while the final score may disagree, will have significantly less impact morale wise than a free throw taken in the closing moments, when that shot determines the outcome of the close game. The pressure difference is hardly ignorable.
+
+Moreover, the player taking the shot must be considered as well. Consider the world-famous basketball player [Shaquille O' Neal](https://www.basketball-reference.com/players/o/onealsh01.html). He was a monster in paint. Over his career, he has averaged 23.7 points per game, 10.9 rebounds per game, all on 58.2% overall field goal percentage. But his free throw percentage was a meager 52.7%, nearly a coin flip, and in some of those seasons, he performed worse than a coin flip. ]. Because of this, teams began implementing the "Hack - A - Shaq" strategy in the closing minutes of the game because the statistics were in the opposing team's favor. At best, Shaq's free throw performance was random. So how might the player impact the shot as well?
+
+# Background
+
+## Data Description
+
+### About the Original Data
+
+All of the data we will use will be at the [References] portion of this report.
+
+#### The Author
+
+The author that has provided the data for us to use is Vladislav Shufinsky. He has compiled NBA play-by-play data from 1996-2022 and made it open-source on Kaggle to allow us to use it for excursions like this[^1].
+
+[^1]: <https://www.kaggle.com/datasets/brains14482/nba-playbyplay-and-shotdetails-data-19962021/data>
+
+A sincere thanks to Vladislav Shufinsky to spend incomprehensible hours scraping all of that data and making it really easy to use.
+
+The data set we will use will contain a whole season's log of play-by-play data from the 2021-2022 NBA season. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the file called "*datanba_2022.csv*"
+
+### The Key Variables
+
+-   The key variables from the NBA data set we will use for this excursion:
+
+    -   `DIVISION` the NBA division the team comes from
+    -   `SEASON` the NBA regular season of focus
+    -   `POSSESSIONS` the total number of possessions for this NBA team for that `SEASON`
+    -   `PTS` the total number of points for this NBA team for that `SEASON`
+
+-   The key variables from the Boston Celtics data set we will use for this excursion:
+
+    -   `Season` the NBA regular season of focus
+    -   `POSS` the total number of possessions for this NBA team for that `Season`
+    -   `POSS_TIME` the total aggregated player possession time for that `Season`
+
+    \`
+
+### Assumptions and Unusuality\$\$\$\$
+
+One assumption that will underline this report is the fact the assumption that any and all free throws, for the same stage of the game $S_n$ is the same. Consider a two free-throw regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$). Similarly, consider the exact same foul for the last minutes of the fourth quarter ($n = 4.4$). In both cases, for $S_n$ where foul each free throw $F$ has same probability for $L$ if $S_n$ is the same. So, $F$ is independent and identical under $L$ for same $S_n$, giving $F$ the Bernoulli model. However, $F$ may have different probability for a different $S_n$.
+
+Given:
+
+$$
+F \in L \in S_n \mid n = \{1.1, 1.2, 1.3, 1.4, 2.1, ... , 4.4\}
+$$
+
+We Assume That: 
+$$
+F \sim \text{Bernoulli(p)}
+$$
+
+### Report Intentions
+
+The rest of this report will focus on building a model for all free throws from the training data set of the 2021-2022 NBA season and attempt to have this model yield a better predictor than the career average.
+
+# Analysis
+
+### Data Cleanup
+
+Here the sourced data is cleaned up to fit our needs. A preview of the data we will use is separately printed out to get a sense of what it looks like.
+
+```{r read-data}
+
+raw_pbp_2022_data <- read.csv("../data/datanba_2022.csv")
+```
+
+```{r clean-data}
+
+pbp_2022_data <- raw_pbp_2022_data %>% select(
+  cl, de, hs, vs, pts, PERIOD, GAME_ID
+)
+
+free_throws_2022 <- pbp_2022_data %>% 
+  filter(pts == 1) 
+  
+  
+
+ft_2022 <- free_throws_2022 %>% 
+  group_by(GAME_ID) %>%
+  ## responsible for getting the teams involved in this game
+  mutate(
+    team = substring(de, 2, 4),
+    team_score = as.numeric(
+      str_extract(de, regex("[0-9]+", TRUE))), 
+    home_team = case_when(team_score == hs ~ team), 
+    away_team = case_when(team_score == vs ~ team)
+  ) %>%
+  ##responsible for getting the player shooting the free throw
+  mutate(
+    player_identifier = str_extract(de, regex("\\]\\s\\w+", TRUE)), 
+    player_shooting = substring(player_identifier, 3, last = 1000000L)
+  ) %>% 
+##responsible for classifying certain stage of the game in period.int format
+  mutate(
+    interval = case_when(
+      cl <= "01:00" ~ 0.5,
+      cl <= "03:00" ~ 0.4, 
+      cl <= "06:00" ~ 0.3, 
+      cl <= "09:00" ~ 0.2,
+      cl <= "12:00" ~ 0.1), 
+    
+    stage_of_game = PERIOD + interval 
+  ) %>% 
+  select(stage_of_game, de, hs, vs, home_team, away_team, player_shooting)
+  
+```
+
+```{r PHI-BOS}
+sample_game_PHI_BOS <- free_throws_2022 %>% filter(GAME_ID == 22200001)
+
+##skips group_by(GAME_ID) step
+PHI_BOS_breakdown <- sample_game_PHI_BOS %>% 
+  ## responsible for getting the teams involved in this game
+  mutate(
+    team = substring(de, 2, 4),
+    team_score = as.numeric(
+      str_extract(de, regex("[0-9]+", TRUE))), 
+    home_team = case_when(team_score == hs ~ team), 
+    away_team = case_when(team_score == vs ~ team)
+  ) %>%
+  ##responsible for getting the player shooting the free throw
+  mutate(
+    player_identifier = str_extract(de, regex("\\]\\s\\w+", TRUE)), 
+    player_shooting = substring(player_identifier, 3, last = 1000000L)
+  ) %>% 
+  ##responsible for classifying certain stage of the game in period.int format
+  mutate(
+    clock_TF = cl <= "01:00", 
+    interval = case_when(
+      cl <= "01:00" ~ 0.5,
+      cl <= "03:00" ~ 0.4, 
+      cl <= "06:00" ~ 0.3, 
+      cl <= "09:00" ~ 0.2,
+      cl <= "12:00" ~ 0.1), 
+    stage_of_game = PERIOD + interval 
+    
+  ) %>% 
+  select(PERIOD, cl, interval, stage_of_game, de, hs, vs, home_team, away_team, player_shooting)
+```
+
+### Methodology
+
+As stated before, the goal is to create some model $M$ that can, on average, accurately predict whether a player will make a free throw or not given the state of the game and the conditions of the player.
+
+As a base line reference, we let the base line model be the null model $N$ with only $\beta_0$ representing the player's career average free throw such that: $$
+N \sim \{Y = \beta_0 \mid \beta_0 \in [0, 1]\}
+$$
+
+So, we are attempting to find $M$ where \mid $E(M)$ \> $E(N)$
+
+#### Analysis 1: [Placeholder]
+
+#### Analysis 2: [Placeholder]
+
+#### Analysis 3: [Placeholder]
+
+# Discussion
+
+In this section, we will discuss the results of our tests and models and their implications in the context of our question and also their broader implications and limitations.
+
+### Comparing the Graphs & Overall Conclusions
+
+#### Graph Comparisons Discussion
+
+[Placeholder]
+
+### Shortcomings and Limitations
+
+[Placeholder]
+
+#### Limitation 1: [Placeholder]
+
+[Placeholder]
+
+#### Limitation 2: [Placeholder]
+
+[Placeholder]
+
+### Alternate Approaches
+
+#### Alternate Approach 1
+
+[Placeholder]
+
+#### Alternate Approach 2
+
+[Placeholder]
+
+### Potential Future Directions
+
+#### Future Direction 1
+
+[Placeholder]
+
+#### Future Direction 2
+
+[Placeholder]
+
+# References
