@@ -42,49 +42,55 @@ Moreover, the player taking the shot must be considered as well. Consider the wo
 
 ## Data Description
 
-### About the Original Data
-
 All of the data we will use will be at the [References] portion of this report.
 
-#### The Author
+### About the Original Data
+
+#### About the Play-By-Play Data
 
 The author that has provided the data for us to use is Vladislav Shufinsky. He has compiled NBA play-by-play data from 1996-2022 and made it open-source on Kaggle to allow us to use it for excursions like this[^1].
 
 [^1]: <https://www.kaggle.com/datasets/brains14482/nba-playbyplay-and-shotdetails-data-19962021/data>
 
-A sincere thanks to Vladislav Shufinsky to spend incomprehensible hours scraping all of that data and making it really easy to use.
-
 The data set we will use will contain a whole season's log of play-by-play data from the 2021-2022 NBA season. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the file called "*datanba_2022.csv*"
+
+#### About the Player Shot Statistics Data
+
+The original source of this data comes from Sports Reference, namely Basketball Reference[^2]. The data was queried and appended through Excel's Power Query feature and made use of Basketball Reference's tables for each team in the 2021-2022 season. The *Advanced* regular season table was used to obtain player data on games played, minutes played, usage rate, and free throw rate. The *Per Game* regular season table was used to obtain player data on free throws, field goal percentage, and effective field goal percentage. The queries have the format [*https://www.basketball-reference.com/teams/{team_abbr}/2022.html#per_game*](https://www.basketball-reference.com/teams/%7Bteam_abbr%7D/2022.html#per_game){.uri} and [*https://www.basketball-reference.com/teams/{team_abbr}/2022.html#advanced*](https://www.basketball-reference.com/teams/%7Bteam_abbr%7D/2022.html#advanced){.uri} for each team with Basketball Reference's team abbreviation standard.
+
+[^2]: <https://www.basketball-reference.com/teams/MIN/2022.html>
+
+The data hyperlinked is a sample one for Minnesota, but any team can be easily navigated to from the hyperlinked URL.
 
 ### The Key Variables
 
--   The key variables from the NBA data set we will use for this excursion:
+-   The key variables from the *Play-By-Play* we will use for this excursion:
+    -   `cl` the time stamp at which the significant play occurred
+    -   `de` the short form description of what the play was
+    -   `hs` the home team total points at the `cl` moment
+    -   `vs` the visiting team total points at the `cl` moment
+    -   `pts` the pts scored by the respective `hs` or `vs` at the `cl` moment
+    -   `PERIOD` the quarter of the game so as to distinct `cl`
+    -   `GAME_ID` the numerical identifier of the game being played
 
-    -   `DIVISION` the NBA division the team comes from
-    -   `SEASON` the NBA regular season of focus
-    -   `POSSESSIONS` the total number of possessions for this NBA team for that `SEASON`
-    -   `PTS` the total number of points for this NBA team for that `SEASON`
-
--   The key variables from the Boston Celtics data set we will use for this excursion:
-
-    -   `Season` the NBA regular season of focus
-    -   `POSS` the total number of possessions for this NBA team for that `Season`
+-   The key variables from the *Player Shot Statistics* data set we will use for this excursion:
+    -   `player` the NBA player of focus
+    -   `team` the team of the NBA `player`
     -   `POSS_TIME` the total aggregated player possession time for that `Season`
 
-    \`
+### Assumptions and Unusuality
 
-### Assumptions and Unusuality\$\$\$\$
+One assumption that will underline this report is the fact the assumption that any and all free throws, for the same stage of the game $S_n$ is the same. Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$). Similarly, consider the exact same foul for the last minutes of the fourth quarter ($n = 4.4$). Foul shot $F$ has a success probability $p = P(F)$ Across both cases $n$ is different so $P(F)$ may be different. But if $L$ occurs under the same $n$, $P(F)$ is the same. The only thing differentiating the probability of $F$ is $S_n$.
 
-One assumption that will underline this report is the fact the assumption that any and all free throws, for the same stage of the game $S_n$ is the same. Consider a two free-throw regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$). Similarly, consider the exact same foul for the last minutes of the fourth quarter ($n = 4.4$). In both cases, for $S_n$ where foul each free throw $F$ has same probability for $L$ if $S_n$ is the same. So, $F$ is independent and identical under $L$ for same $S_n$, giving $F$ the Bernoulli model. However, $F$ may have different probability for a different $S_n$.
+Moreover, while in $L$, $F$ is independent and identical. This gives us the following:
 
-Given:
+Given foul $L$ has free throw $F$ occuring at some interval in the game $S_n$:
 
 $$
-F \in L \in S_n \mid n = \{1.1, 1.2, 1.3, 1.4, 2.1, ... , 4.4\}
+F \in S_n \mid n = \{1.1, 1.2, 1.3, 1.4, 2.1, ... , 4.4\}
 $$
 
-We Assume That: 
-$$
+We Assume That: $$
 F \sim \text{Bernoulli(p)}
 $$
 
@@ -96,37 +102,48 @@ The rest of this report will focus on building a model for all free throws from 
 
 ### Data Cleanup
 
-Here the sourced data is cleaned up to fit our needs. A preview of the data we will use is separately printed out to get a sense of what it looks like.
+Here we will clean up our mentioned data sets and add and remove certain variables as needed. Any significant changes are reported at the bootom of the clean up section.
 
-```{r read-data}
+```{r read-print-raw-data}
 
 raw_pbp_2022_data <- read.csv("../data/datanba_2022.csv")
+
+##print the first 15 rows of this raw data
+head(raw_pbp_2022_data, n=15)
+
+
+##the data that has each player's relevant shooting stats
+raw_player_data <- read.csv("../data/power_query_ft_model.csv")
 ```
 
 ```{r clean-data}
+
+##the last name of the player, since that is what is in the pbp data
+player_regex = "\\]\\s\\w+"
+##to capture all "free throws"
+free_throw_literal_regex = "Free Throw"
+##to capture the score as a numeric from the description
+score_regex = "[0-9]+"
 
 pbp_2022_data <- raw_pbp_2022_data %>% select(
   cl, de, hs, vs, pts, PERIOD, GAME_ID
 )
 
+##get the home and away scores
 free_throws_2022 <- pbp_2022_data %>% 
-  filter(pts == 1) 
-  
-  
-
-ft_2022 <- free_throws_2022 %>% 
+  filter(str_detect(de, free_throw_literal_regex)) %>%
   group_by(GAME_ID) %>%
   ## responsible for getting the teams involved in this game
   mutate(
     team = substring(de, 2, 4),
     team_score = as.numeric(
-      str_extract(de, regex("[0-9]+", TRUE))), 
+      str_extract(de, regex(score_regex, TRUE))), 
     home_team = case_when(team_score == hs ~ team), 
     away_team = case_when(team_score == vs ~ team)
   ) %>%
   ##responsible for getting the player shooting the free throw
   mutate(
-    player_identifier = str_extract(de, regex("\\]\\s\\w+", TRUE)), 
+    player_identifier = str_extract(de, regex(player_regex, TRUE)), 
     player_shooting = substring(player_identifier, 3, last = 1000000L)
   ) %>% 
 ##responsible for classifying certain stage of the game in period.int format
@@ -137,15 +154,19 @@ ft_2022 <- free_throws_2022 %>%
       cl <= "06:00" ~ 0.3, 
       cl <= "09:00" ~ 0.2,
       cl <= "12:00" ~ 0.1), 
-    
     stage_of_game = PERIOD + interval 
   ) %>% 
-  select(stage_of_game, de, hs, vs, home_team, away_team, player_shooting)
+  ##difference in scores, postive is home team is ahead
+  mutate(
+    pt_difference = hs - vs
+  ) %>%
+  select(GAME_ID, stage_of_game, de, hs, vs, home_team, away_team, player_shooting, pt_difference)
   
 ```
 
-```{r PHI-BOS}
+```{r PHI-BOS, echo=FALSE}
 sample_game_PHI_BOS <- free_throws_2022 %>% filter(GAME_ID == 22200001)
+
 
 ##skips group_by(GAME_ID) step
 PHI_BOS_breakdown <- sample_game_PHI_BOS %>% 
@@ -164,7 +185,6 @@ PHI_BOS_breakdown <- sample_game_PHI_BOS %>%
   ) %>% 
   ##responsible for classifying certain stage of the game in period.int format
   mutate(
-    clock_TF = cl <= "01:00", 
     interval = case_when(
       cl <= "01:00" ~ 0.5,
       cl <= "03:00" ~ 0.4, 
@@ -172,9 +192,12 @@ PHI_BOS_breakdown <- sample_game_PHI_BOS %>%
       cl <= "09:00" ~ 0.2,
       cl <= "12:00" ~ 0.1), 
     stage_of_game = PERIOD + interval 
-    
   ) %>% 
-  select(PERIOD, cl, interval, stage_of_game, de, hs, vs, home_team, away_team, player_shooting)
+  ##difference in scores, postive is home team is ahead
+  mutate(
+    pt_difference = hs - vs
+  ) %>%
+  select(stage_of_game, de, hs, vs, home_team, away_team, player_shooting, pt_difference)
 ```
 
 ### Methodology
@@ -182,10 +205,13 @@ PHI_BOS_breakdown <- sample_game_PHI_BOS %>%
 As stated before, the goal is to create some model $M$ that can, on average, accurately predict whether a player will make a free throw or not given the state of the game and the conditions of the player.
 
 As a base line reference, we let the base line model be the null model $N$ with only $\beta_0$ representing the player's career average free throw such that: $$
-N \sim \{Y = \beta_0 \mid \beta_0 \in [0, 1]\}
-$$
+N \sim \{Y = \beta_0 \mid \beta_0 \in [0, 1]\}$$
 
-So, we are attempting to find $M$ where \mid $E(M)$ \> $E(N)$
+Where $Y$ value represents $P(F)$
+
+Given that we are aiming to deliver an accurate model, the confusion matrix schema will be utilized to give fundamental statistics of our model. However, if there is one ultimate goal, we wish that based on our confusion matrix,
+
+$$\text{Accuracy(M)} \geq \text{Accuracy(N)}$$
 
 #### Analysis 1: [Placeholder]
 
