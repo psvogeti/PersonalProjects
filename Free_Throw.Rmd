@@ -76,7 +76,21 @@ The data hyperlinked is a sample one for Minnesota, but any team can be easily n
 -   The key variables from the *Player Shot Statistics* data set we will use for this excursion:
     -   `player` the NBA player of focus
     -   `team` the team of the NBA `player`
-    -   `POSS_TIME` the total aggregated player possession time for that `Season`
+    -   `gms_played` the total number of games the `player` has participated in for the 2021-2022 regular season
+    -   `min_played` the total number of minutes the `player` has participated in for the 2021-2022 regular season
+    -   `usage_pct` an estimate of the percentage of `team` plays used by a `player` while he was on the floor [^3]
+    -   `fgm` the average number of made field goals per game by the basketball `player`
+    -   `fga` the number of field goal attempts per game by the basketball `player` 
+    -   `fg_pct` the ratio between `fgm` and `fga`
+    -   `eff_fg_pct` "effective field goal percentage; the formula is (FG + 0.5 * 3P) / FGA. This statistic adjusts for the fact that a 3-point field goal is worth one more point than a 2-point field goal"[^3]
+    -   `ftm` the average number of made field goals per game by the basketball `player`
+    -   `fta` the number of field goal attempts per game by the basketball `player` 
+    -   `ft_pct` the ratio between `ftm` and `fta`
+    -   `ft_rate`the ratio between  `fta` and `fga` and can be viewed as the rate at which the `player` visits the free throw line based on shots taken [^4]
+    
+    [^3]: <https://www.basketball-reference.com/about/glossary.html>
+    [^4]: <https://www.nbastuffer.com/analytics101/free-throw-rate/>
+    
 
 ### Assumptions and Unusuality
 
@@ -90,7 +104,9 @@ $$
 F \in S_n \mid n = \{1.1, 1.2, 1.3, 1.4, 2.1, ... , 4.4\}
 $$
 
-We Assume That: $$
+We Assume That: 
+
+$$
 F \sim \text{Bernoulli(p)}
 $$
 
@@ -139,7 +155,8 @@ free_throws_2022 <- pbp_2022_data %>%
     team_score = as.numeric(
       str_extract(de, regex(score_regex, TRUE))), 
     home_team = case_when(team_score == hs ~ team), 
-    away_team = case_when(team_score == vs ~ team)
+    away_team = case_when(team_score == vs ~ team),
+    player_team = team
   ) %>%
   ##responsible for getting the player shooting the free throw
   mutate(
@@ -160,45 +177,10 @@ free_throws_2022 <- pbp_2022_data %>%
   mutate(
     pt_difference = hs - vs
   ) %>%
-  select(GAME_ID, stage_of_game, de, hs, vs, home_team, away_team, player_shooting, pt_difference)
+  select(GAME_ID, home_team, away_team, stage_of_game, de, hs, vs, player_shooting, player_team, pts, pt_difference)
   
 ```
 
-```{r PHI-BOS, echo=FALSE}
-sample_game_PHI_BOS <- free_throws_2022 %>% filter(GAME_ID == 22200001)
-
-
-##skips group_by(GAME_ID) step
-PHI_BOS_breakdown <- sample_game_PHI_BOS %>% 
-  ## responsible for getting the teams involved in this game
-  mutate(
-    team = substring(de, 2, 4),
-    team_score = as.numeric(
-      str_extract(de, regex("[0-9]+", TRUE))), 
-    home_team = case_when(team_score == hs ~ team), 
-    away_team = case_when(team_score == vs ~ team)
-  ) %>%
-  ##responsible for getting the player shooting the free throw
-  mutate(
-    player_identifier = str_extract(de, regex("\\]\\s\\w+", TRUE)), 
-    player_shooting = substring(player_identifier, 3, last = 1000000L)
-  ) %>% 
-  ##responsible for classifying certain stage of the game in period.int format
-  mutate(
-    interval = case_when(
-      cl <= "01:00" ~ 0.5,
-      cl <= "03:00" ~ 0.4, 
-      cl <= "06:00" ~ 0.3, 
-      cl <= "09:00" ~ 0.2,
-      cl <= "12:00" ~ 0.1), 
-    stage_of_game = PERIOD + interval 
-  ) %>% 
-  ##difference in scores, postive is home team is ahead
-  mutate(
-    pt_difference = hs - vs
-  ) %>%
-  select(stage_of_game, de, hs, vs, home_team, away_team, player_shooting, pt_difference)
-```
 
 ### Methodology
 
