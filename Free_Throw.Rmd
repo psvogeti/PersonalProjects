@@ -154,7 +154,7 @@ Once we find $m$, we will then assign $m$ to its respective player $p$ to become
 
 ### Report Intentions
 
-The rest of this report will be divided into two parts of data analysis: part one will focus on finding `m` for some `p` and part two will aim to build `f`. 
+The rest of this report will be divided into three parts of data analysis: part one will focus on finding $m$ for some $p$ and part two will aim to build $f$. Finally, part three aims to show how $f$ can be used in as many informational contexts as possible.  
 
 # Analysis
 
@@ -273,6 +273,8 @@ As seen above, one new variable was introduced in this cleaner set:
   - `min_per_gm` the `player` ratio between `gms_played` and `min_played`
 
 #### Analysis: Finding $m$ on a chosen $p$
+
+
 
 #### Analysis: Finding $f$
 
