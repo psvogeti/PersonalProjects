@@ -2,8 +2,11 @@
 title: "Predicting the Free Throw"
 author: "Pranav Vogeti"
 date: "2023-11-22"
-output: html_document
+output: 
+  html_document:
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
 ---
+
 ```{css, echo=FALSE}
 body {
   background-color: papayawhip
@@ -16,8 +19,6 @@ library(tidyverse)
 library(lubridate)
 library(kableExtra)
 ```
-
-
 
 # Introduction
 
@@ -96,14 +97,18 @@ The data hyperlinked is a sample one for Minnesota, but any team can be easily n
 
 ### Assumptions and Unusuality
 
-One assumption that will underline this report is the fact the assumption that any and all free throws, for the same stage of the game $S_n$ is the same. Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$). Similarly, consider the exact same foul for the last minutes of the fourth quarter ($n = 4.4$). Foul shot $F$ has a success probability $p = P(F)$ Across both cases $n$ is different so $P(F)$ may be different. But if $L$ occurs under the same $n$, $P(F)$ is the same. The only thing differentiating the probability of $F$ is $S_n$.
+One assumption that will underline this report is the fact the assumption that any and all free throws, for the same stage of the game $S_n$ is the same. Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($S_n = 1.1$). Similarly, consider the exact same foul for the last minutes of the fourth quarter ($S_n = 4.4$). Foul shot $F$ has a success probability $p = P(F)$ Across both cases $S_n$ is different so $P(F)$ may be different. But if $L$ occurs under the same $S_n$, $P(F)$ is the same. The only thing differentiating the probability of $F$ is $S_n$.
 
 Moreover, while in $L$, $F$ is independent and identical. This gives us the following:
 
 Given foul $L$ has free throw $F$ occuring at some interval in the game $S_n$:
 
 $$
-F \in S_n \mid n = \{1.1, 1.2, 1.3, 1.4, 1.5, 2.1, ..., 2.5, 3.1, ..., 4.5\}
+s \in S_n \mid S_n = \{1.1, 1.2, 1.3, 1.4, 1.5, 2.1, ..., 2.5, 3.1, ..., 6.5\}
+$$
+
+$$
+\forall F \in s
 $$
 
 We Assume That:
@@ -112,20 +117,32 @@ $$
 F \sim \text{Bernoulli(p)}
 $$
 
-Similarly, we will do the same for game point differential $D$. We use the $S_n$ assumption above to make this assumption. The assumption is that for any and all free throws, for the categorically same $D$ occurring in $S_n$ , foul shot $F$ with probability $P(F)$ is the same.
+Similarly, we will do the same for game point differential $D$. $D$ is categorical with five labels:
 
-Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$) with the ***home*** team up by 10 ($D = 10$). Similarly, consider the exact same foul just moments later ($n=1.1$) but now the ***visiting*** team is up by 5 ($D = -5$). Foul shot $F \in L$ has a success probability $p = P(F)$. Across both cases $D$ is different so $P(F)$ may be different. But if $L$ occurs under the same $D$, $P(F)$ is the same. The only thing differentiating $P(F)$ is $D$.
+1) `HOME DOMINATION` $(H_D)$ if home team is up by at least +15 or more
+
+2) `HOME LEADING`$(H_L)$ if home team is up as at least +5 but less than +15
+
+3) `TIGHT GAME`$(T_G)$ if home team is as at least -5 but less than +5 within the visiting team
+
+4) `VISIT LEADING` $(V_L)$ if home team is down at least -15 but less than -5
+
+5) `VISIT DOMINATION`$(V_D)$ if home team is down at least -15 or less
+
+We use the $S_n$ assumption above to make this assumption. The assumption is that for any and all free throws, for the categorically same $D$ occurring in $S_n$ , foul shot $F$ with probability $P(F)$ is the same.
+
+Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$) with the ***home*** team up by 10 ($D = H_L$). Similarly, consider the exact same foul just moments later ($n=1.1$) but now the ***visiting*** team is up by 5 ($D = V_L$). Foul shot $F \in L$ has a success probability $p = P(F)$. Across both cases $D$ is different so $P(F)$ may be different. But if $L$ occurs under the same $D$, $P(F)$ is the same. The only thing differentiating $P(F)$ is $D$.
 
 Moreover, while in $L$, $F$ is independent and identical. This gives us the following:
 
 Given foul $L$ has free throw $F$ occurring at some interval in the game $S_n$ with a current game point differential $D$ :
 
 $$
-D \in S_n \mid n = \{1.1, 1.2, 1.3, 1.4, 1.5, 2.1, ..., 2.5, 3.1, ..., 4.5\}
+d \in D \mid D = \{H_D, H_L, T_G, V_L, V_D\}
 $$
 
 $$
-\forall F \in D
+\forall F \in d
 $$
 
 We Assume That:
@@ -134,27 +151,47 @@ $$
 F \sim \text{Bernoulli(p)}
 $$
 
-
 ### Methodology
 
-As stated before, the goal is to create some model $m$ that can, on average, accurately predict whether a player will make a free throw or not given the state of the game and the conditions of the player.
+As stated before the goal is to create some model $m$, specific to the the state of the game $S_n$ and the score of the game $D$, that can accurately model $P(F)$
 
-As a base line reference, we let the base line model be the null model $n$ with only $\beta_0$ representing the player's career average free throw such that: $$
+As a base line reference, we let the base line model be the null model $n$ with only $\beta_0$ representing the $p$'s season average free throw such that: $$
 n \sim \{Y = \beta_0 \mid \beta_0 \in [0, 1]\}$$
 
 Where $Y$ value represents $P(F)$
 
-Given that we are aiming to deliver an accurate model, the confusion matrix schema will be utilized to give fundamental statistics of our model. However, if there is one ultimate goal, we wish that based on our confusion matrix,
 
-$$\text{Accuracy(m)} \geq \text{Accuracy(n)}$$
+Once we find $m$, we will then assign $m$ to its respective player $p$ to become $m_p$. We will do this for all $p$ so that we can accomplish a dynamic function $f$ that, when passed in $p$, $S_n$ and $D$, returns the appropriate $m_p$
 
-Once we find $m$, we will then assign $m$ to its respective player $p$ to become $m_p$. We will do this for all $p$ so that we can accomplish a dynamic function $f$ that, when passed in $p$, $S_n$ and $D$, returns $m_p$
 
+How do we get $f$?
+
+Recall that $m$ depends on three things: $p$ which we choose,  and then all instances of $S_n$, and $D$. Once we choose $p$, we get $m_p$. $S_n$ and $D$ then become the categorical specifications that $m_p$ is built on. The numerical predictors of $m_p$ depends on $p$'s statline. However, it is also highly likely that $m_p$ may not be built if $p$ does not have any $F$ in a particular $s \in S_n$ or a particular $d \in D$. If this is the case, then we avoid building $m_p$ and we will use $n$ to replace $m_p$ as the deferring model, where $n$ is only $p$'s season average free throw percentage
+
+Here is the visualization of this how $p$'s models may vary depending on $D$ (the rows) and $S_n$ (the columns). Note, $n$ may be at any index of the array, it is just demonstrated that $n$ exists when a instance of $S_n$ and $D$ is not readily available
+
+```{=tex}
+\begin{array}{c|ccccccc} 
+
+& 1.1 & 1.2 & 1.3 & 1.4 & 1.5 & \cdots & 6.5 \\
+
+
+H_D & m_{1.1\times H_D} & m_{1.2\times H_D} & m_{1.3\times H_D} & m_{1.4\times H_D} & m_{1.5\times H_D} & \cdots & m_{6.5\times H_D}\\ 
+
+H_L & m_{1.1\times H_L} & \ddots & m_{1.3\times H_L} & \cdots & \cdots & \cdots & \vdots\\ 
+
+T_G & m_{1.1\times T_G} & n & \ddots & m_{1.4\times T_G} & n & \cdots & \vdots\\ 
+
+V_L & m_{1.1\times V_L} & \cdots & \cdots & \ddots & m_{1.5\times V_L} & \cdots & \vdots\\
+
+V_D & m_{1.1\times V_D} & \cdots & n & \cdots & \cdots & \cdots & m_{6.5\times V_D}\\
+\end{array}
+```
 
 
 ### Report Intentions
 
-The rest of this report will be divided into three parts of data analysis: part one will focus on finding $m$ for some $p$ and part two will aim to build $f$. Finally, part three aims to show how $f$ can be used in as many informational contexts as possible.  
+The rest of this report will showcase the data we are working with and their cleaned sets. Then, our analyses gets divided into three parts: part one will focus on finding $m$ for some $p$ and part two will aim to build $f$. Part three aims to show how $f$ can be used in as many informational contexts as possible. We will discuss about $f$ and highlight its pros and cons in our [Discussion] section. Finally, in our [Conclusion] section, we will provide alternative approaches to our query and also provide possible extensions as well. 
 
 # Analysis
 
@@ -235,25 +272,25 @@ free_throws_2022 <- pbp_2022_data %>%
 head(free_throws_2022, n = 10)
 ```
 
-As seen above, few new variables were introduced in this cleaner set: 
+As seen above, few new variables were introduced in this cleaner set:
 
-  - `home_team` the home team of this match identified by the `GAME_ID` and is associated with `de`
-  
-  - `away_team` the away team of this match identified by the `GAME_ID` and is associated with `de` 
-  
-  - `player_shooting` the player shooting the free throw 
-  
-  - `player_team` the team of the player shooting the free throw
-  
-  - `pt_difference` the difference between `hs` and `vs`, positive indicates `home_team` score advantage 
-  
-  - `pt_difference_cat` characterizes `pt_difference` into five distinct categories 
-  
-    1) `HOME DOMINATION` if `pt_difference` as at least +15 or more
-    2) `HOME LEADING` if `pt_difference` as at least +5 but less than +15 
-    3) `TIGHT GAME` if `pt_difference` as at least -5 but less than +5 
-    4) `VISIT LEADING` if `pt_difference` as at least -15 but less than -5 
-    5) `VISIT DOMINATION`if `pt_difference` as at least -15 or less
+-   `home_team` the home team of this match identified by the `GAME_ID` and is associated with `de`
+
+-   `away_team` the away team of this match identified by the `GAME_ID` and is associated with `de`
+
+-   `player_shooting` the player shooting the free throw
+
+-   `player_team` the team of the player shooting the free throw
+
+-   `pt_difference` the difference between `hs` and `vs`, positive indicates `home_team` score advantage
+
+-   `pt_difference_cat` characterizes `pt_difference` into five distinct categories
+
+    1)  `HOME DOMINATION` if `pt_difference` as at least +15 or more
+    2)  `HOME LEADING` if `pt_difference` as at least +5 but less than +15
+    3)  `TIGHT GAME` if `pt_difference` as at least -5 but less than +5
+    4)  `VISIT LEADING` if `pt_difference` as at least -15 but less than -5
+    5)  `VISIT DOMINATION`if `pt_difference` as at least -15 or less
 
 Here we clean up our raw shot statistic data and output the cleaned data that we will work with.
 
@@ -269,11 +306,11 @@ clean_player_data <- raw_player_data %>%
 head(clean_player_data, n = 10)
 ```
 
-As seen above, one new variable was introduced in this cleaner set: 
-  - `min_per_gm` the `player` ratio between `gms_played` and `min_played`
+As seen above, one new variable was introduced in this cleaner set: - `min_per_gm` the `player` ratio between `gms_played` and `min_played`
 
 #### Analysis: Finding $m$ on a chosen $p$
 
+Here, we are going to find $m$ for one particular player $p = \text{LeBron James}$. Why him? LeBron has been in the conversation for the greatest player of all time in the NBA. He has been mentioned in countless in-game situations and hypotheticals, making him a robust choice to find all his $m$.
 
 
 #### Analysis: Finding $f$
@@ -285,6 +322,12 @@ As seen above, one new variable was introduced in this cleaner set:
 In this section, we will discuss the results of our tests and models and their implications in the context of our question and also their broader implications and limitations.
 
 ### Comparing the Graphs & Overall Conclusions
+
+
+Given that we are aiming to deliver an accurate model, the confusion matrix schema will be utilized to give fundamental statistics of our model. However, if there is one ultimate goal, we wish that based on our confusion matrix,
+
+$$\text{Accuracy(m)} \geq \text{Accuracy(n)}$$
+
 
 #### Graph Comparisons Discussion
 
