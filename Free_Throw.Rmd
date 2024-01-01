@@ -119,15 +119,15 @@ $$
 
 Similarly, we will do the same for game point differential $D$. $D$ is categorical with five labels:
 
-1) `HOME DOMINATION` $(H_D)$ if home team is up by at least +15 or more
+1)  `HOME DOMINATION` $(H_D)$ if home team is up by at least +15 or more
 
-2) `HOME LEADING`$(H_L)$ if home team is up as at least +5 but less than +15
+2)  `HOME LEADING`$(H_L)$ if home team is up as at least +5 but less than +15
 
-3) `TIGHT GAME`$(T_G)$ if home team is as at least -5 but less than +5 within the visiting team
+3)  `TIGHT GAME`$(T_G)$ if home team is as at least -5 but less than +5 within the visiting team
 
-4) `VISIT LEADING` $(V_L)$ if home team is down at least -15 but less than -5
+4)  `VISIT LEADING` $(V_L)$ if home team is down at least -15 but less than -5
 
-5) `VISIT DOMINATION`$(V_D)$ if home team is down at least -15 or less
+5)  `VISIT DOMINATION`$(V_D)$ if home team is down at least -15 or less
 
 We use the $S_n$ assumption above to make this assumption. The assumption is that for any and all free throws, for the categorically same $D$ occurring in $S_n$ , foul shot $F$ with probability $P(F)$ is the same.
 
@@ -160,13 +160,11 @@ n \sim \{Y = \beta_0 \mid \beta_0 \in [0, 1]\}$$
 
 Where $Y$ value represents $P(F)$
 
-
 Once we find $m$, we will then assign $m$ to its respective player $p$ to become $m_p$. We will do this for all $p$ so that we can accomplish a dynamic function $f$ that, when passed in $p$, $S_n$ and $D$, returns the appropriate $m_p$
-
 
 How do we get $f$?
 
-Recall that $m$ depends on three things: $p$ which we choose,  and then all instances of $S_n$, and $D$. Once we choose $p$, we get $m_p$. $S_n$ and $D$ then become the categorical specifications that $m_p$ is built on. The numerical predictors of $m_p$ depends on $p$'s statline. However, it is also highly likely that $m_p$ may not be built if $p$ does not have any $F$ in a particular $s \in S_n$ or a particular $d \in D$. If this is the case, then we avoid building $m_p$ and we will use $n$ to replace $m_p$ as the deferring model, where $n$ is only $p$'s season average free throw percentage
+Recall that $m$ depends on three things: $p$ which we choose, and then all instances of $S_n$, and $D$. Once we choose $p$, we get $m_p$. $S_n$ and $D$ then become the categorical specifications that $m_p$ is built on. The numerical predictors of $m_p$ depends on $p$'s statline. However, it is also highly likely that $m_p$ may not be built if $p$ does not have any $F$ in a particular $s \in S_n$ or a particular $d \in D$. If this is the case, then we avoid building $m_p$ and we will use $n$ to replace $m_p$ as the deferring model, where $n$ is only $p$'s season average free throw percentage
 
 Here is the visualization of this how $p$'s models may vary depending on $D$ (the rows) and $S_n$ (the columns). Note, $n$ may be at any index of the array, it is just demonstrated that $n$ exists when a instance of $S_n$ and $D$ is not readily available
 
@@ -187,11 +185,9 @@ V_L & m_{1.1\times V_L} & \cdots & \cdots & \ddots & m_{1.5\times V_L} & \cdots 
 V_D & m_{1.1\times V_D} & \cdots & n & \cdots & \cdots & \cdots & m_{6.5\times V_D}\\
 \end{array}
 ```
-
-
 ### Report Intentions
 
-The rest of this report will showcase the data we are working with and their cleaned sets. Then, our analyses gets divided into three parts: part one will focus on finding $m$ for some $p$ and part two will aim to build $f$. Part three aims to show how $f$ can be used in as many informational contexts as possible. We will discuss about $f$ and highlight its pros and cons in our [Discussion] section. Finally, in our [Conclusion] section, we will provide alternative approaches to our query and also provide possible extensions as well. 
+The rest of this report will showcase the data we are working with and their cleaned sets. Then, our analyses gets divided into three parts: part one will focus on finding $m$ for some $p$ and part two will aim to build $f$. Part three aims to show how $f$ can be used in as many informational contexts as possible. We will discuss about $f$ and highlight its pros and cons in our [Discussion] section. Finally, in our [Conclusion] section, we will provide alternative approaches to our query and also provide possible extensions as well.
 
 # Analysis
 
@@ -266,7 +262,9 @@ free_throws_2022 <- pbp_2022_data %>%
       pt_difference < 5 ~ "TIGHT GAME", #[-5, 5)
       pt_difference < 15  ~ "HOME LEADING") #[5, -15)
   ) %>%
-  select(GAME_ID, home_team, away_team, stage_of_game, de, hs, vs, player_shooting, player_team, pts, pt_difference, pt_difference_cat)
+  ##QoL change
+  rename(gm_quarter = PERIOD) %>%
+  select(GAME_ID, home_team, away_team, stage_of_game, gm_quarter, de, hs, vs, player_shooting, player_team, pts, pt_difference, pt_difference_cat)
   
 ##print out the first 10 rows of this new data set
 head(free_throws_2022, n = 10)
@@ -277,6 +275,8 @@ As seen above, few new variables were introduced in this cleaner set:
 -   `home_team` the home team of this match identified by the `GAME_ID` and is associated with `de`
 
 -   `away_team` the away team of this match identified by the `GAME_ID` and is associated with `de`
+
+-   `gm_quarter` the current NBA defined quarter of this match identified by the `GAME_ID`; any value above 4 is considered to be the overtime quarter
 
 -   `player_shooting` the player shooting the free throw
 
@@ -300,18 +300,75 @@ clean_player_data <- raw_player_data %>%
   # remove players without any shot activity, especially free throws
   filter(fta != 0) %>%
   filter(fga != 0) %>%
-  select(team, player, gms_played, min_per_gm, usage_pct, fgm, fga, fg_pct, eff_fg_pct, ftm, fta, ft_pct, ft_rate)
+  rename(player_team = team) %>%
+  select(player_team, player, gms_played, min_per_gm, usage_pct, fgm, fga, fg_pct, eff_fg_pct, ftm, fta, ft_pct, ft_rate)
 
 #print the first 10 rows of this data set
 head(clean_player_data, n = 10)
 ```
 
-As seen above, one new variable was introduced in this cleaner set: - `min_per_gm` the `player` ratio between `gms_played` and `min_played`
+As seen above, one new variable was introduced in this cleaner set: 
+
+- `min_per_gm` the `player` ratio between `gms_played` and `min_played`
 
 #### Analysis: Finding $m$ on a chosen $p$
 
 Here, we are going to find $m$ for one particular player $p = \text{LeBron James}$. Why him? LeBron has been in the conversation for the greatest player of all time in the NBA. He has been mentioned in countless in-game situations and hypotheticals, making him a robust choice to find all his $m$.
 
+In order to build the table outlined in the [Methodology] section, we need to get $n$. Since $n$ is merely the null model with its intercept term representing the season average free throw percentage, this is a quick fetch.
+
+```{r n-LeBron, echo=TRUE}
+player_of_interest = "LeBron James"
+split_names <- strsplit(player_of_interest, " ")
+last_name = tail(split_names[[1]], 1)
+
+null_model_lebron <- clean_player_data %>% 
+  filter(player == player_of_interest) %>% pull(ft_pct) %>% mean()
+
+null_model_lebron
+```
+
+Before we build $m$, we need to join LeBron's statline to his free throw data. This will allow us to build $m$ off of one dataset.
+
+```{r readying-m-LeBron, echo = TRUE}
+##get the team based on our player
+team_of_interest = clean_player_data %>%
+  filter(player == player_of_interest) %>% pull(player_team) %>% str_extract(regex("\\w+"))
+
+##get the player's free throw chart
+free_throws_lebron <- free_throws_2022 %>%
+  filter(player_team == team_of_interest) %>%
+  filter(player_shooting == last_name)
+
+lebron_shooting_data <- clean_player_data %>% filter(player == player_of_interest)
+
+model_data_lebron <- full_join(free_throws_lebron, lebron_shooting_data, by = "player_team")
+```
+
+Now comes the fun part, building $m_\text{LeBron}$! First, let us plot all his $F$ depending on $S_n$ and $D$
+
+```{r F-Sn, echo=TRUE}
+ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_difference_cat)) + 
+  geom_jitter(alpha=.5, height=0.05) +
+  facet_wrap(vars(gm_quarter), scales = "free_x") + 
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) + 
+  theme(legend.background = element_rect(fill = "papayawhip")) + 
+  scale_colour_manual(
+    values = c("papayawhip", "burlywood1", "darkgoldenrod1", 
+               "cyan1", "steelblue")) +
+  labs(color = "Point Differential") +
+  xlab("Stage of the Game") +
+  ylab("Free Throw Shot Result") +
+  ggtitle("LeBron's Free Throw Shot Results By Quarter and Stage of Game", 
+          subtitle = "2021-2022 NBA Regular Season")
+```
+
+There is a lot going on in this faceted collection of graphs. 
+
+We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G \in [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominantes in the missed $F$ collection. 
+
+The main takeaway with regards to this report is this: it is worth our time to include in interaction term between our categorical predictors $S_n$ and $D$. Doing so, will help us model situations we saw in facets 1, 4, and 5. 
 
 #### Analysis: Finding $f$
 
@@ -323,11 +380,9 @@ In this section, we will discuss the results of our tests and models and their i
 
 ### Comparing the Graphs & Overall Conclusions
 
-
 Given that we are aiming to deliver an accurate model, the confusion matrix schema will be utilized to give fundamental statistics of our model. However, if there is one ultimate goal, we wish that based on our confusion matrix,
 
 $$\text{Accuracy(m)} \geq \text{Accuracy(n)}$$
-
 
 #### Graph Comparisons Discussion
 
