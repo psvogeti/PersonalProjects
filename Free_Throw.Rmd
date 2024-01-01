@@ -217,6 +217,8 @@ player_regex = "\\]\\s\\w+"
 free_throw_literal_regex = "Free Throw"
 ##to capture the score as a numeric from the description
 score_regex = "[0-9]+"
+##to capture the team code
+team_regex = "\\[[A-Z]{3}"
 
 
 
@@ -230,12 +232,8 @@ free_throws_2022 <- pbp_2022_data %>%
   group_by(GAME_ID) %>%
   ## responsible for getting the teams involved in this game
   mutate(
-    team = substring(de, 2, 4),
-    team_score = as.numeric(
-      str_extract(de, regex(score_regex, TRUE))), 
-    home_team = case_when(team_score == hs ~ team), 
-    away_team = case_when(team_score == vs ~ team),
-    player_team = team
+    team = str_extract(de, regex(team_regex, FALSE)),
+    player_team = substring(team, 2, 5), 
   ) %>%
   ##responsible for getting the player shooting the free throw
   mutate(
@@ -264,7 +262,7 @@ free_throws_2022 <- pbp_2022_data %>%
   ) %>%
   ##QoL change
   rename(gm_quarter = PERIOD) %>%
-  select(GAME_ID, home_team, away_team, stage_of_game, gm_quarter, de, hs, vs, player_shooting, player_team, pts, pt_difference, pt_difference_cat)
+  select(GAME_ID, stage_of_game, gm_quarter, de, hs, vs, player_shooting, player_team, pts, pt_difference, pt_difference_cat)
   
 ##print out the first 10 rows of this new data set
 head(free_throws_2022, n = 10)
@@ -272,17 +270,13 @@ head(free_throws_2022, n = 10)
 
 As seen above, few new variables were introduced in this cleaner set:
 
--   `home_team` the home team of this match identified by the `GAME_ID` and is associated with `de`
-
--   `away_team` the away team of this match identified by the `GAME_ID` and is associated with `de`
-
 -   `gm_quarter` the current NBA defined quarter of this match identified by the `GAME_ID`; any value above 4 is considered to be the overtime quarter
 
 -   `player_shooting` the player shooting the free throw
 
 -   `player_team` the team of the player shooting the free throw
 
--   `pt_difference` the difference between `hs` and `vs`, positive indicates `home_team` score advantage
+-   `pt_difference` the difference between `hs` and `vs`, positive indicates home team score advantage
 
 -   `pt_difference_cat` characterizes `pt_difference` into five distinct categories
 
@@ -356,7 +350,7 @@ ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_differenc
   theme(legend.background = element_rect(fill = "papayawhip")) + 
   scale_colour_manual(
     values = c("papayawhip", "burlywood1", "darkgoldenrod1", 
-               "cyan1", "steelblue")) +
+               "cyan1", "cyan3")) +
   labs(color = "Point Differential") +
   xlab("Stage of the Game") +
   ylab("Free Throw Shot Result") +
@@ -366,9 +360,31 @@ ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_differenc
 
 There is a lot going on in this faceted collection of graphs. 
 
-We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G \in [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominantes in the missed $F$ collection. 
+We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection. 
 
-The main takeaway with regards to this report is this: it is worth our time to include in interaction term between our categorical predictors $S_n$ and $D$. Doing so, will help us model situations we saw in facets 1, 4, and 5. 
+The main takeaway with regards to this report is this: it is worth our time to include an interaction term between our categorical predictors $S_n$ and the numerical predictor $d \in D$. Doing so, will help us model situations we saw in facets 1, 4, and 5. 
+
+
+
+```{r F-Sn-HA}
+
+ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = home_team)) + 
+  geom_jitter(alpha=.5, height=0.05) +
+  facet_wrap(vars(gm_quarter), scales = "free_x") + 
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) + 
+  theme(legend.background = element_rect(fill = "papayawhip")) + 
+  scale_colour_manual(
+    values = c("papayawhip", "burlywood1", "darkgoldenrod1", 
+               "cyan1", "cyan3")) +
+  labs(color = "Point Differential") +
+  xlab("Stage of the Game") +
+  ylab("Free Throw Shot Result") +
+  ggtitle("LeBron's Free Throw Shot Results By Quarter and Stage of Game", 
+          subtitle = "2021-2022 NBA Regular Season")
+
+```
+
 
 #### Analysis: Finding $f$
 
