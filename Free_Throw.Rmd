@@ -301,15 +301,29 @@ clean_player_data <- raw_player_data %>%
 head(clean_player_data, n = 10)
 ```
 
-As seen above, one new variable was introduced in this cleaner set: 
+As seen above, one new variable was introduced in this cleaner set:
 
-- `min_per_gm` the `player` ratio between `gms_played` and `min_played`
+-   `min_per_gm` the `player` ratio between `gms_played` and `min_played`
 
-#### Analysis: Finding $m$ on a chosen $p$
+Finally, we join both of these data sets together to be used for our analysis.
 
-Here, we are going to find $m$ for one particular player $p = \text{LeBron James}$. Why him? LeBron has been in the conversation for the greatest player of all time in the NBA. He has been mentioned in countless in-game situations and hypotheticals, making him a robust choice to find all his $m$.
+```{r join-data, echo=TRUE}
+## get the last name of the player in our shot statistic data
+clean_player_data <- clean_player_data %>% mutate(last_name = sub(".*\\s", "", player))
 
-In order to build the table outlined in the [Methodology] section, we need to get $n$. Since $n$ is merely the null model with its intercept term representing the season average free throw percentage, this is a quick fetch.
+## join the shot statistic data to the free throw data by matching the player team and the player shooting (via our last name column)
+ft_complete <- free_throws_2022 %>%
+  inner_join(clean_player_data, by = c("player_team", "player_shooting" = "last_name"))
+
+## print the first 10 rows of this data set
+head(ft_complete, n = 10)
+```
+
+#### Analysis: Finding $m_p$
+
+Here, we are going to find a basis for $m_p$ using the context of one particular player $p = \text{LeBron James}$. Why him? LeBron has been in the conversation for the greatest player of all time in the NBA. He has been mentioned in countless in-game situations and hypotheticals, making him a robust choice to see what we need to consider when building $m_p$
+
+In order to reflect our table outlined in the [Methodology] section, we need to get $n$. Since $n$ is merely the null model with its intercept term representing the season average free throw percentage, this is a quick fetch.
 
 ```{r n-LeBron, echo=TRUE}
 player_of_interest = "LeBron James"
@@ -322,9 +336,9 @@ null_model_lebron <- clean_player_data %>%
 null_model_lebron
 ```
 
-Before we build $m$, we need to join LeBron's statline to his free throw data. This will allow us to build $m$ off of one dataset.
+Before we build $m$, we need to join LeBron's statline to his free throw data. This will allow us to graph off of one dataset.
 
-```{r readying-m-LeBron, echo = TRUE}
+```{r m-LeBron-data, echo = TRUE}
 ##get the team based on our player
 team_of_interest = clean_player_data %>%
   filter(player == player_of_interest) %>% pull(player_team) %>% str_extract(regex("\\w+"))
@@ -339,7 +353,7 @@ lebron_shooting_data <- clean_player_data %>% filter(player == player_of_interes
 model_data_lebron <- full_join(free_throws_lebron, lebron_shooting_data, by = "player_team")
 ```
 
-Now comes the fun part, building $m_\text{LeBron}$! First, let us plot all his $F$ depending on $S_n$ and $D$
+Now, let's see how his $F$ depends on $S_n$ and $D$.
 
 ```{r F-Sn, echo=TRUE}
 ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_difference_cat)) + 
@@ -350,7 +364,7 @@ ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_differenc
   theme(legend.background = element_rect(fill = "papayawhip")) + 
   scale_colour_manual(
     values = c("papayawhip", "burlywood1", "darkgoldenrod1", 
-               "cyan1", "cyan3")) +
+               "cyan1", "cyan4")) +
   labs(color = "Point Differential") +
   xlab("Stage of the Game") +
   ylab("Free Throw Shot Result") +
@@ -358,35 +372,108 @@ ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_differenc
           subtitle = "2021-2022 NBA Regular Season")
 ```
 
-There is a lot going on in this faceted collection of graphs. 
+There is a lot going on in this faceted collection of graphs.
 
-We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection. 
+We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection.
 
-The main takeaway with regards to this report is this: it is worth our time to include an interaction term between our categorical predictors $S_n$ and the numerical predictor $d \in D$. Doing so, will help us model situations we saw in facets 1, 4, and 5. 
+The main takeaway with regards to this report is this: it is worth our time to include an interaction term between our categorical predictors $S_n$ and $D$ when dealing with $f$. Doing so, will help us model situations we saw in facets 1, 4, and 5.
 
+Now comes the fun part, building $m_p$! Since we are predicing on a binary result, logisitic regression makes sense here.
 
+Here we define $m_p$ to be the shooting stats of $p$ as predictors of $F$. We will factor in $S_n$ and $D$ in [Analysis: Finding $f$]
 
-```{r F-Sn-HA}
+The goal is to let $m_p \sim \sigma(m_\text{lin})$ where $m_\text{lin}$ is the linear model:
 
-ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = home_team)) + 
-  geom_jitter(alpha=.5, height=0.05) +
-  facet_wrap(vars(gm_quarter), scales = "free_x") + 
-  theme_dark() +
-  theme(plot.background = element_rect(fill = "papayawhip")) + 
-  theme(legend.background = element_rect(fill = "papayawhip")) + 
-  scale_colour_manual(
-    values = c("papayawhip", "burlywood1", "darkgoldenrod1", 
-               "cyan1", "cyan3")) +
-  labs(color = "Point Differential") +
-  xlab("Stage of the Game") +
-  ylab("Free Throw Shot Result") +
-  ggtitle("LeBron's Free Throw Shot Results By Quarter and Stage of Game", 
-          subtitle = "2021-2022 NBA Regular Season")
+$$
+Y = \beta_0 + \beta_\text{min_per_gm}X_\text{min_per_gm} + 
+\beta_\text{min_per_gm}X_\text{min_per_gm} +
+\beta_\text{usage_pct}X_\text{usage_pct} + \\
+\beta_\text{fgm}X_\text{fgm} +
+\beta_\text{fga}X_\text{fga} +
+\beta_\text{fg_pct}X_\text{fg_pct} + 
+\beta_\text{eff_fg_pct}X_\text{eff_fg_pct} + \\
+\beta_\text{ftm}X_\text{ftm} +
+\beta_\text{fta}X_\text{fta} +
+\beta_\text{ft_pct}X_\text{ft_pct} +
+\beta_\text{ft_rate}X_\text{ft_rate}
+$$
 
+```{r m-p, echo=TRUE}
+##create the log-reg model on p-statline
+ft_model <- glm(pts ~ min_per_gm + usage_pct + fgm + fga + fg_pct + eff_fg_pct + ftm + fta + ft_pct +ft_rate,
+                data = ft_complete, family = "binomial") 
+
+##view the summary
+summary(ft_model)
 ```
 
+Based on our summary, it seems we can comfortably reduce the complexity of $m_p$. Since we are operating under $\alpha = 0.05$, we choose to keep:
+
+$$
+\beta_\text{min_per_gm}, 
+\beta_\text{fg_pct}, \beta_\text{eff_fg_pct}, \\
+\beta_\text{ftm}, \beta_\text{fta}, \\ \beta_\text{ft_pct},\beta_\text{ft_rate} 
+$$
+
+```{r ft-model-2}
+##create the log-reg model on p-statline
+ft_model_updated <- glm(pts ~ min_per_gm + fg_pct + eff_fg_pct + ftm + fta + ft_pct +ft_rate, data = ft_complete, family = "binomial") 
+
+##view the summary
+summary(ft_model_updated)
+```
+
+When running $m_p$ summary $\beta_\text{ft_rate}$ obtained an even stronger significance level under $\alpha = 0.05$.
+
+Now, we begin training and testing our data. The method we use is not ours, rather what we found from a quick YouTube query[^6] in order to easily split our complete data in a 80% train set and 20% test set. We will divide our rows of data by two indices, each with a weighted probability (0.8 and 0.2) of occurring. This gives us random sets to work with. We will then train $m_p$ on the training data and test it on the test data.
+
+[^6]: https://www.youtube.com/watch?v=Irlfb8ELzis&ab_channel=RidvanGedik
+
+The splitting method we use can be found [here](https://www.youtube.com/watch?v=Irlfb8ELzis&ab_channel=RidvanGedik)
+
+
+```{r train-test-split}
+##split data into training (80%) and testing (20%)
+TRAIN_SPLIT = 0.8
+TEST_SPLIT = 0.2
+DATA_SIZE = nrow(ft_complete)
+FT_THRESHOLD_PROB = 0.75
+
+##reproduceable split
+set.seed(715)
+##choose between indexes 1, 2 with one index at 80% chance and the other at 20%
+index_choice <- sample(2, DATA_SIZE, replace = TRUE, prob=c(TRAIN_SPLIT, TEST_SPLIT))
+train_data <- ft_complete[index_choice==1, ]
+test_data <- ft_complete[index_choice==2, ]
+
+##train our model
+ft_model_train <- glm(pts ~ min_per_gm + fg_pct + eff_fg_pct + ftm + fta + ft_pct +ft_rate, data = train_data, family = "binomial")
+
+##test our trained model
+ft_model_test <- predict.glm(ft_model_train, test_data, type='response')
+
+##print out the results of our tested predictions
+head(ft_model_test)
+
+##add each model predicted free throw to the corresponding player
+NUM_PLAYERS = nrow(test_data)
+test_data_predictions <- test_data %>% mutate(model_prob = 0)
+for (i in 1:NUM_PLAYERS) {
+  test_data_predictions$model_prob[i] = ft_model_test[[i]]
+}
+
+test_data_predictions <- test_data_predictions %>% ungroup() %>%
+  select(stage_of_game, gm_quarter, player_shooting, pts, min_per_gm, fg_pct, eff_fg_pct, ftm, fta, ft_pct, model_prob)
+
+##print the first few lines of our predicted data
+head(test_data_predictions, n = 10)
+```
+
+This concludes part 1 of building a holistic $m_p$. In this sub-section, we have built $m_p$ using only the statline of $p$ to give an adjusted free throw probability. In the next section, we will adjust the probability of $m_p$ by factoring in $S_n$ and $D$ and build a function $f$ to output $P(F)$. 
 
 #### Analysis: Finding $f$
+
+At this point, we have accounted for our numerical predictors. What we need to do is provide our model context with our categorical variables $S_n$ and $D$. 
 
 #### Analysis: Using $f$
 
