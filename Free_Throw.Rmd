@@ -185,7 +185,6 @@ V_L & m_{1.1\times V_L} & \cdots & \cdots & \ddots & m_{1.5\times V_L} & \cdots 
 V_D & m_{1.1\times V_D} & \cdots & n & \cdots & \cdots & \cdots & m_{6.5\times V_D}\\
 \end{array}
 ```
-
 ### Report Intentions
 
 The rest of this report will showcase the data we are working with and their cleaned sets. Then, our analyses gets divided into three parts: part one will focus on finding $m_p$ for some $p$ and part two will aim to build $m$. Part three aims to build $f$ and show how $f$ can be used in as many informational contexts as possible. We will discuss about $f$ and highlight its pros and cons in our [Discussion] section. Finally, we will also provide alternative approaches to our query and also provide possible extensions as well.
@@ -329,12 +328,12 @@ Here we define $m_p$ to be the shooting stats of $p$ as predictors of $F$. We wi
 The goal is to let $m_p \sim \sigma(m_\text{lin})$ where $m_\text{lin}$ is the linear model:
 
 $$
-Y = \beta_0 + \beta_\text{min_per_gm}X_\text{min_per_gm} + \\
-\beta_\text{usage_pct}X_\text{usage_pct} + \\
+Y = \beta_0 + \beta_\text{min_per_gm}X_\text{min_per_gm} +\\
+\beta_\text{usage_pct}X_\text{usage_pct} +\\
 \beta_\text{fgm}X_\text{fgm} + 
 \beta_\text{fga}X_\text{fga} + 
 \beta_\text{fg_pct}X_\text{fg_pct} + 
-\beta_\text{eff_fg_pct}X_\text{eff_fg_pct} + \\
+\beta_\text{eff_fg_pct}X_\text{eff_fg_pct} +\\
 \beta_\text{ftm}X_\text{ftm} +
 \beta_\text{fta}X_\text{fta} +
 \beta_\text{ft_pct}X_\text{ft_pct} +
@@ -353,9 +352,9 @@ summary(ft_model)
 Based on our summary, it seems we can comfortably reduce the complexity of $m_p$. Since we are operating under $\alpha = 0.05$, we choose to keep:
 
 $$
-\beta_\text{min_per_gm}, \\
-\beta_\text{fg_pct}, \beta_\text{eff_fg_pct}, \\
-\beta_\text{ftm}, \beta_\text{fta}, \\ \beta_\text{ft_pct},\beta_\text{ft_rate} 
+\beta_\text{min_per_gm},\\
+\beta_\text{fg_pct}, \beta_\text{eff_fg_pct},\\
+\beta_\text{ftm}, \beta_\text{fta},\\ \beta_\text{ft_pct},\beta_\text{ft_rate} 
 $$
 
 ```{r ft-model-2}
@@ -370,10 +369,9 @@ When running $m_p$ summary $\beta_\text{ft_rate}$ obtained an even stronger sign
 
 Now, we begin training and testing our data. The method we use is not ours, rather what we found from a quick YouTube query[^6] in order to easily split our complete data in a 80% train set and 20% test set. We will divide our rows of data by two indices, each with a weighted probability (0.8 and 0.2) of occurring. This gives us random sets to work with. We will then train $m_p$ on the training data and test it on the test data.
 
-[^6]: https://www.youtube.com/watch?v=Irlfb8ELzis&ab_channel=RidvanGedik
+[^6]: <https://www.youtube.com/watch?v=Irlfb8ELzis&ab_channel=RidvanGedik>
 
 The splitting method we use can be found [here](https://www.youtube.com/watch?v=Irlfb8ELzis&ab_channel=RidvanGedik)
-
 
 ```{r train-test-split}
 ##split data into training (80%) and testing (20%)
@@ -410,10 +408,10 @@ test_data_predictions <- test_data_predictions %>% ungroup() %>%
 ##print the first few lines of our predicted data
 head(test_data_predictions, n = 10)
 ```
+
 Again the above output is decent because our model probabilities in `model_prob` are very close to `ft_pct`. But before we evaluate `model_prob` accuracy, we still have not done anything with $S_n$ and $D$ yet!
 
-
-This concludes part 1 of building a holistic $m_p$. In this sub-section, we have built $m_p$ using only the statline of $p$ to give an adjusted free throw probability $P(F)$. In the next section, we will adjust $P(F)$ given by $m_p$ by factoring in $S_n$ and $D$ and build a function $f$ to output this adjusted $P(F)$. 
+This concludes part 1 of building a holistic $m_p$. In this sub-section, we have built $m_p$ using only the statline of $p$ to give an adjusted free throw probability $P(F)$. In the next section, we will adjust $P(F)$ given by $m_p$ by factoring in $S_n$ and $D$ and build a function $f$ to output this adjusted $P(F)$.
 
 #### Analysis: Finding $m$
 
@@ -463,11 +461,11 @@ ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_differenc
 
 There is a lot going on in this faceted collection of graphs.
 
-We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection. 
+We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection.
 
 The main takeaway with regards to this report is this: it is worth our time to use our categorical predictors $S_n$ and $D$ when dealing with $f$. Doing so, will help us model situations we saw in facets 1, 4, and 5.
 
-First we link the probabilities outputted by $m_p$ to our data set. 
+First we link the probabilities outputted by $m_p$ to our data set.
 
 ```{r adding-p}
 ##first, let's add all the P from our model 
@@ -483,7 +481,8 @@ for(i in 1:NUM_PLAYERS) {
 }
 ```
 
-Now, we can use `model_prob` as a predictor when dividing our data along `stage_of_game` and `pt_difference_cat`. 
+Now, we can use `model_prob` as a predictor when dividing our data along `stage_of_game` and `pt_difference_cat`.
+
 ```{r ft-model-full-setup}
 ##convert to factors so that S_n and D are treated categorically
 ft_complete$stage_of_game <- as.factor(ft_complete$stage_of_game)
@@ -496,40 +495,36 @@ ft_model.cats <- glm(pts ~ stage_of_game + pt_difference_cat + model_prob, data 
 summary(ft_model.cats)
 ```
 
-Well this is slightly awkward! After spending so much time talking about the potential impacts of $S_n$ and $D$, we only found so many significant $s \in S_n$ and no significant $D$! What is interesting to see by the summary output is our significant $s_n$ are 
-(under $\alpha = 0.05$): 
+Well this is slightly awkward! After spending so much time talking about the potential impacts of $S_n$ and $D$, we only found so many significant $s \in S_n$ and no significant $D$! What is interesting to see by the summary output is our significant $s_n$ are (under $\alpha = 0.05$):
 
-For 
-$$
+For $$
 s_n \in S_n \mid S_n = \{1.1, 1.2, 1.3, 1.4, 1.5, 2.1, ..., 2.5, 3.1, ..., 6.5\}
 $$
 
-We see
-$$
+We see $$
 s_n = \{1.2, 1.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2\}
 $$
 
+What is even more interesting is the positive effect that our model observes.
 
-What is even more interesting is the positive effect that our model observes. 
+> This model implies that for a free throw taken in $s = 1.2$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.15$ when compared to other contexts.
 
-> This model implies that for a free throw taken in $s = 1.2$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.15$ when compared to other contexts. 
+> This model implies that for a free throw taken in $s = 1.3$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts.
 
-> This model implies that for a free throw taken in $s = 1.3$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts. 
+> This model implies that for a free throw taken in $s = 2.4$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts.
 
-> This model implies that for a free throw taken in $s = 2.4$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts. 
-
-> This model implies that for a free throw taken in $s = \{3.1, 3.2, 3.3\}$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.25$ when compared to other contexts. 
+> This model implies that for a free throw taken in $s = \{3.1, 3.2, 3.3\}$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.25$ when compared to other contexts.
 
 > This model implies that for a free throw taken in $s = \{3.4, 3.5\}$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.17$ when compared to other contexts.
 
-> This model implies that for a free throw taken in $s = 4.1$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.22$ when compared to other contexts. 
+> This model implies that for a free throw taken in $s = 4.1$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.22$ when compared to other contexts.
 
-> This model implies that for a free throw taken in $s = 4.2$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.16$ when compared to other contexts. 
+> This model implies that for a free throw taken in $s = 4.2$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.16$ when compared to other contexts.
 
+Given that some $s$ are certainly significant, it is worth it to keep $S_n$ as a predictor in our full model $m$. However, we have ruled out $D$ as being a predictor of $F$. Thus, though it is hard to say goodbye, we must do the needful if we wish to obtain an accurate $m$ which we can use in our function $f$.
 
-Given that some $s$ are certainly significant, it is worth it to keep $S_n$ as a predictor in our full model $m$. However, we have ruled out $D$ as being a predictor of $F$. Thus, though it is hard to say goodbye, we must do the needful if we wish to obtain an accurate $m$ which we can use in our function $f$. 
+This gives us a new updated table from our [Methodology] section:
 
-This gives us a new updated table from our [Methodology] section: 
 ```{=tex}
 \begin{array}{c|ccccccc} 
 
@@ -547,9 +542,10 @@ V_L & m_{1.1} & \cdots & \cdots & \ddots & m_{1.5} & \cdots & \vdots\\
 V_D & m_{1.1} & \cdots & n & \cdots & \cdots & \cdots & m_{6.5}\\
 \end{array}
 ```
-Where we are no longer concerned about $D$. 
+Where we are no longer concerned about $D$.
 
-Now we train and test our model at an 80% train, 20% test split using the same method shown earlier. 
+Now we train and test our model at an 80% train, 20% test split using the same method shown earlier.
+
 ```{r ft-model-full, echo=TRUE}
 ##split data into training (80%) and testing (20%)
 TRAIN_SPLIT = 0.8
@@ -587,27 +583,27 @@ test_data_predictions <- test_data_predictions %>% ungroup() %>%
 head(test_data_predictions, n = 10)
 ```
 
-A lot has happened thus far, let us quickly recap. 
+A lot has happened thus far, let us quickly recap.
 
-First, our goal was to find, for free throw $F$, the best probability $P(F)$. We did this based on factoring in a player $p$'s statline, and created a model $m_p$ to use $p$'s statline to find a better $P(F)$ than the null model $n$ which is simply the `ft_pct` vector seen above. We did this in [Analysis: Finding $m_p$]. 
+First, our goal was to find, for free throw $F$, the best probability $P(F)$. We did this based on factoring in a player $p$'s statline, and created a model $m_p$ to use $p$'s statline to find a better $P(F)$ than the null model $n$ which is simply the `ft_pct` vector seen above. We did this in [Analysis: Finding $m_p$].
 
-In this section, we analyzed what the crux of this report was about: the in-game context of $F$. We looked at how the stage of the game $S_n$ and the point differential $D$, influence $F$ and therefore $P(F)$. What we found was that $D$ was really inconsequential to $P(F)$. Only certain $S_n$ influenced $P(F)$. Painfully, we had to exclude $D$ and move on. This gave us an updated model $m$ that used the results of $m_p$ and $S_n$ as its predictors. 
+In this section, we analyzed what the crux of this report was about: the in-game context of $F$. We looked at how the stage of the game $S_n$ and the point differential $D$, influence $F$ and therefore $P(F)$. What we found was that $D$ was really inconsequential to $P(F)$. Only certain $S_n$ influenced $P(F)$. Painfully, we had to exclude $D$ and move on. This gave us an updated model $m$ that used the results of $m_p$ and $S_n$ as its predictors.
 
-The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`), $m_p$ (`model_prob`), and $m$ (`model_prob_new`).  You can see that one noticeable difference is that each player has a different $P(F)$ under $m$ but shares the same $P(F)$ under $n$ and $m_p$ regardless of $S_n$. 
-
+The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`), $m_p$ (`model_prob`), and $m$ (`model_prob_new`). You can see that one noticeable difference is that each player has a different $P(F)$ under $m$ but shares the same $P(F)$ under $n$ and $m_p$ regardless of $S_n$.
 
 #### Analysis: Finding $f$
 
-Now, one item remains, creating $f$. Again, we stated that a parameter of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$. Once these are passed in, we wish to give a table of all $P(F)$ across all models ${n, m_p, m}$ related to $p$ alongside relevant statistics of each model. 
+Now, one item remains, creating $f$. Again, we stated that a parameter of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$. Once these are passed in, we wish to give a table of all $P(F)$ across all models ${n, m_p, m}$ related to $p$ alongside relevant statistics of each model.
 
 Recall that we made one important assumption of $F$. 
+
 $$
 F \sim \text{Bernoulli(p)}
 $$
 
-This means that we can interpret $F$ as a Bernoulli random variable with parameter $p = P(F)$. Doing so gives us a great way to evaluate the efficiency of our models. 
+This means that we can interpret $F$ as a Bernoulli random variable with parameter $p = P(F)$. Doing so gives us a great way to evaluate the efficiency of our models.
 
-We simply randomly generate one sample $F$ call it $F_r$.  $F_r$ will be parameterized by $P(F)$ given from our models. Then, we can simply compare the outcome of $F_r$ against the outcome $F$ as a measure of model accuracy. We will do this for all given $p$ and $S_n$ and return the results through our function $f$. 
+We simply randomly generate one sample $F$ call it $F_r$. $F_r$ will be parameterized by $P(F)$ given from our models. Then, we can simply compare the outcome of $F_r$ against the outcome $F$ as a measure of model accuracy. We will do this for all given $p$ and $S_n$ and return the results through our function $f$.
 
 ```{r function-setup, echo=TRUE}
 ##first, let's add all the P from our model 
@@ -637,7 +633,7 @@ ft_model_data <- ft_complete %>% ungroup() %>%
 head(ft_model_data, n = 10)
 ```
 
-The output shown above shows $F$ (`ft_result`),  and $P(F)$ across the models $n$ (`null_model`), $m_p$ (`player_model`), and $m$ (`full_model`).
+The output shown above shows $F$ (`ft_result`), and $P(F)$ across the models $n$ (`null_model`), $m_p$ (`player_model`), and $m$ (`full_model`).
 
 ```{r function-building, echo=TRUE}
 
@@ -688,8 +684,7 @@ get_ft_table <- function(player_name, stage_in_game) {
 }
 ```
 
-Above we have built $f$. The output of $f$ consists of $p$ (`plyr`), the count of $F \mid \forall F \in s$ (`num_fts`) , the model set ${n, m_p, m}$ (`models`), the probability set $P(F)$ (`model_prob`), and the accuracy of the model set (`model_accuracy`) 
-
+Above we have built $f$. The output of $f$ consists of $p$ (`plyr`), the count of $F \mid \forall F \in s$ (`num_fts`) , the model set ${n, m_p, m}$ (`models`), the probability set $P(F)$ (`model_prob`), and the accuracy of the model set (`model_accuracy`)
 
 Now, we simply use $f$ to our heart's content.
 
@@ -713,7 +708,28 @@ get_ft_table("Stephen Curry", 5.4)
 get_ft_table("Grayson Allen", 6.5)
 ```
 
+Before leaving the analysis, we wish to plot all $F$ against $S_n \times D$. It is a rather beautiful graph, but also gives quite a bit of insight on why we saw the results for $S_n$ and $D$ when crafting $m$
 
+```{r all-F-graph}
+ggplot(ft_complete, aes(x=stage_of_game, y=pts, color = pt_difference_cat)) + 
+  geom_jitter(alpha = .5, height = .05) +
+  geom_smooth(formula = "y ~ 1 + x", se=FALSE, method = "glm", method.args = list(family = "binomial")) +
+  facet_wrap(vars(gm_quarter), scales = "free_x") + 
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) + 
+  theme(legend.background = element_rect(fill = "papayawhip")) + 
+  scale_colour_manual(
+    values = c("papayawhip", "burlywood1", "darkgoldenrod1", 
+               "cyan1", "cyan4")) +
+  labs(color = "Point Differential") +
+  xlab("Stage of the Game") +
+  ylab("Free Throw Shot Result") +
+  ggtitle("All Free Throw Shot Results By Quarter and Stage of Game", 
+          subtitle = "2021-2022 NBA Regular Season")
+
+```
+
+Besides the lovely color palette, we can see how difficult a task it is to find any significance of $D$. It seems that no matter what the score is, $F$'s outcome is purely dependent on $p$. It is hard to even discern the right $S_n$ that may have a significant impact.
 
 # Discussion
 
@@ -722,41 +738,57 @@ In this section, we will discuss the results of our tests and models and their i
 ### Comparing the Graphs & Overall Conclusions
 
 
-
 #### Graph Comparisons Discussion
 
-[Placeholder]
+Overall, given how much speculation was put on $S_n$ and $D$, it was surprising to see how insignificant both were. For one, $m$ chose not to include $D$ at all. For another, only a select few $S_n$ really had some impact on $P(F)$. Again, looking at the final graph that stored all $F$ across $S_n$ and $D$, we see just how random $F$ is if we only took those two into account. 
 
 ### Shortcomings and Limitations
 
-[Placeholder]
 
-#### Limitation 1: [Placeholder]
+#### Limitation 1: $m_p$ and $m$
 
-[Placeholder]
+Recall that $m$ was built on $m_p$. This was probably not the smartest move on us. For one, $m_p$ already gave its own family of $P(F)$ and factored in the player only. When we created $m$, we used that $P(F)$ set as a regressor for $m$. In other words, if we were going to factor in $S_n$ and $D$, the best time to do it was when dealing with $m_p$, not $m$.  One advantage this gave us was to allow the comparison of models $\{n, m_p, m\}$. But again, this came at a cost as $m$ tends to overestimate $P(F)$ severely. In the case of $p = \text{Zach LaVine}$, his $P(F) \approx 99\%$ when $S_n = 6.3$, a truly eye-opening result. 
 
-#### Limitation 2: [Placeholder]
+#### Limitation 2: $n$
 
-[Placeholder]
+If one were to run our $f$ a lot of times, more often than not, $n$ trumps $m_p$ and $m$. This result is not surprising given how the data was fetched to begin with. Recall that $n$ was simply the season average free throw percentage of $p$. That season average free throw percentage is based on the 2021-2022 NBA Season. The data? The data was queried from the 2021-2022 NBA season. $n$ has a clear advantage because it is a result of our data, so it will tend to have the best accuracy compared to our models. This is also a reason why our models $m_p$ and $m$ tend to overestimate $P(F)$ because of the positive effects of the $\beta \in m_p$ we observed when adding to $n$ and also similar positive effects of $S_n$ on $m_p$ we observed. 
+
+
+#### Limitation 3: $F$
+
+An additional limitation was the oversimplification of $F$. Recall that $F$ was binary, and the Bernoulli random variable was chosen to model it. However, one important factor not really touched on about $F$ is this: $F$ generally, for all $p$, has a really high success rate. A quick calculation shows us that $F$ has a mean probability $P_\text{mean}(F) \approx 78\%$. That is an obnoxiously high number! 
+
+Typically, when evaluating a logistic regression model, there is some threshold $t \in [0, 1]$ that is chosen such that if for some binary variable $X$
+
+$$
+X = 
+\begin{cases} 
+    1 & \text{if } P(X) \geq t \\
+    0 & \text{otherwise} \\
+\end{cases}
+$$
+
+However, it is hard to choose $t$ when $P_\text{mean}(F) \approx 78\%$. Thus, using $F$ as a Bernoulli, though easy to calculate accuracy, may not be the best method for evaluating $F$ and the efficiency of the model set $\{n, m_p, m\}$ and the probability set that results from it. 
+
 
 ### Alternate Approaches
 
-#### Alternate Approach 1
+#### Alternate Approach 1: Use a different $n$
 
-[Placeholder]
+One obvious approach would be to fetch all $n$ from the 2020-2021 NBA Season and then use that to build $m_p$ and $m$. This would allow for all of the $\beta$ we chose in $m_p$ and the categorical $S_n$ and potentially $D$ to correct for the error inherent by using the prior season data as a reference point for the current season data.   
 
-#### Alternate Approach 2
+#### Alternate Approach 2: Focus on $m$
 
-[Placeholder]
+Another alternate approach would be to avoid building $m_p$ altogether and just build some model $m$. This would not only reduce the expensive calculation costs, but it would also avoid the trivial case of adding more predictors. Using CV-techniques and Variable Selection techniques like Ridge Regression and LASSO and choosing a $\lambda$ to penalize overfitting as we encountered would also strengthen $m$ when compared to our lackluster model. 
 
 ### Potential Future Directions
 
 #### Future Direction 1
 
-[Placeholder]
+One future direction that a project like this can go is in predicting the NBA 3-point shot, 2-point shot, and overall field-goal percentage.  The methods used above can be translated easily to such expeditions, albeit a better choice of variables is needed to do so. 
 
 #### Future Direction 2
 
-[Placeholder]
+Another future direction this project allows is for predicting home-team vs away-team advantages only. Use only this distinction as a categorical variable and keep all $p$ statline the same. Then, choose to find some $m$ for some binary outcome variable in the basketball game that may be impacted by this team-based distinction. 
 
 # References
