@@ -13,7 +13,7 @@ body {
 }
 ```
 
-```{r message = FALSE, include = FALSE}
+```{r message = FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(lubridate)
@@ -506,7 +506,7 @@ $$
 
 We see
 $$
-s_n = {1.2, 1.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2}
+s_n = \{1.2, 1.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2\}
 $$
 
 
@@ -518,9 +518,9 @@ What is even more interesting is the positive effect that our model observes.
 
 > This model implies that for a free throw taken in $s = 2.4$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts. 
 
-> This model implies that for a free throw taken in $s = 3.1, 3.2, 3.3$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.25$ when compared to other contexts. 
+> This model implies that for a free throw taken in $s = \{3.1, 3.2, 3.3\}$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.25$ when compared to other contexts. 
 
-> This model implies that for a free throw taken in $s = 3.4, 3.5$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.17$ when compared to other contexts.
+> This model implies that for a free throw taken in $s = \{3.4, 3.5\}$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.17$ when compared to other contexts.
 
 > This model implies that for a free throw taken in $s = 4.1$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.22$ when compared to other contexts. 
 
@@ -609,7 +609,7 @@ This means that we can interpret $F$ as a Bernoulli random variable with paramet
 
 We simply randomly generate one sample $F$ call it $F_r$.  $F_r$ will be parameterized by $P(F)$ given from our models. Then, we can simply compare the outcome of $F_r$ against the outcome $F$ as a measure of model accuracy. We will do this for all given $p$ and $S_n$ and return the results through our function $f$. 
 
-```{r function-setup}
+```{r function-setup, echo=TRUE}
 ##first, let's add all the P from our model 
 ## make predictions on all of the data
 ft_model_probs <- predict.glm(ft_model_train, ft_complete, type='response')
@@ -625,37 +625,95 @@ for(i in 1:NUM_PLAYERS) {
 ##show only the player, n, m_p, and m
 ft_model_data <- ft_complete %>% ungroup() %>%
   select(stage_of_game, player, pts, ft_pct, model_prob, model_prob_new) %>%
-  rename(null_model = ft_pct, 
+  ##QoL
+  rename(ft_result = pts,
+         null_model = ft_pct, 
          player_model = model_prob, 
-         full_model = model_prob_new)
+         full_model = model_prob_new) %>% 
+    ##convert back to numeric to make f easy 
+  mutate(stage_of_game = droplevels(stage_of_game))
 
 ##print the first 10 lines of this new data
 head(ft_model_data, n = 10)
 ```
 
-The output shown above shows $P(F)$ across the models $n$ (`null_model`), $m_p$ (`player_model`), and $m$ (`full_model`).
+The output shown above shows $F$ (`ft_result`),  and $P(F)$ across the models $n$ (`null_model`), $m_p$ (`player_model`), and $m$ (`full_model`).
 
-```{r function-building}
+```{r function-building, echo=TRUE}
 
 NUM_SAMPLES = 1
 NUM_TRIALS = 1
 
 
-get_ft_prob <- function(player_name, stage_in_game) {
+get_ft_table <- function(player_name, stage_in_game) {
+  ##get the requested data
   player_fts <- ft_model_data %>%
     filter(player == player_name & stage_of_game == stage_in_game) %>%
-    mutate(F_null = rbinom(NUM_SAMPLES, NUM_TRIALS, null_model)) 
+    ##generate F_r by each model
+    mutate(F_null = rbinom(NUM_SAMPLES, NUM_TRIALS, null_model)) %>%
+    mutate(F_player = rbinom(NUM_SAMPLES, NUM_TRIALS, player_model)) %>%
+    mutate(F_full = rbinom(NUM_SAMPLES, NUM_TRIALS, full_model))
   
-  null_ft_prob = player_fts %>% pull(null_model) %>% mean()
+  ## get the model probabilities
+  null_model_prob = player_fts %>% pull(null_model) %>% mean()
+  player_model_prob = player_fts %>% pull(player_model) %>% mean()
+  full_model_prob = player_fts %>% pull(full_model) %>% mean()
   
-  return(null_ft_prob)
+  ## get the model accuracy data
+  null_model_acc = mean(player_fts$F_null == player_fts$ft_result) 
+  player_model_acc = mean(player_fts$F_player == player_fts$ft_result)
+  full_model_acc = mean(player_fts$F_full == player_fts$ft_result)
+  
+  ## prep work for the data frame 
+  plyr <- c(player_name)
+  num_fts <- nrow(player_fts)
+  models <- c("NULL MODEL", "PLAYER MODEL", "FULL MODEL")
+  model_prob <- c(null_model_prob, player_model_prob, full_model_prob)
+  model_accuracy <- c(null_model_acc, player_model_acc, full_model_acc)
+  
+  ## pool the columns into one data frame
+  ft_shots_df <- data.frame(plyr, num_fts, models, model_prob, model_accuracy)
+  
+  ## table formatting
+  ft_shots_df <- ft_shots_df %>%  
+    kable() %>%
+     kable_styling(
+        position = "center",
+        full_width = FALSE,
+        bootstrap_options = c("bordered", "condensed", "striped"),
+     )
+  
+  ##return the data frame
+  return(ft_shots_df)
 }
+```
 
+Above we have built $f$. The output of $f$ consists of $p$ (`plyr`), the count of $F \mid \forall F \in s$ (`num_fts`) , the model set ${n, m_p, m}$ (`models`), the probability set $P(F)$ (`model_prob`), and the accuracy of the model set (`model_accuracy`) 
+
+
+Now, we simply use $f$ to our heart's content.
+
+```{r calling-f, echo =TRUE}
+##get the table for Joel Embiid during Sn = 1.2
+get_ft_table("Jayson Tatum", 1.2)
+
+##get the table for LeBron James during Sn = 2.5
+get_ft_table("LeBron James", 2.4)
+
+##get the table for Giannis Antetokounmpo during Sn = 3.3
+get_ft_table("Giannis Antetokounmpo", 3.3)
+
+##get the table for Jayson Tatum during Sn = 4.1
+get_ft_table("Jayson Tatum", 4.1)
+
+##get the table for Stephen Curry during Sn = 5.3
+get_ft_table("Stephen Curry", 5.4)
+
+##get the table for Grayson Allen during Sn = 6.5
+get_ft_table("Grayson Allen", 6.5)
 ```
 
 
-
-$$\text{Accuracy(m)} \geq \text{Accuracy(n)}$$
 
 # Discussion
 
