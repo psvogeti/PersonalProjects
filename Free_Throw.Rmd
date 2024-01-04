@@ -164,9 +164,9 @@ Once we find $m$, we will then assign $m$ to its respective player $p$ to become
 
 How do we get $f$?
 
-Recall that $m$ depends on three things: $p$ which we choose, and then all instances of $S_n$, and $D$. Once we choose $p$, we get $m_p$. $S_n$ and $D$ then become the categorical specifications that $m_p$ is built on. The numerical predictors of $m_p$ depends on $p$'s statline. However, it is also highly likely that $m_p$ may not be built if $p$ does not have any $F$ in a particular $s \in S_n$ or a particular $d \in D$. If this is the case, then we avoid building $m_p$ and we will use $n$ to replace $m_p$ as the deferring model, where $n$ is only $p$'s season average free throw percentage
+Recall that $m$ depends on three things: $p$ which we choose, and then all instances of $S_n$, and $D$. Once we choose $p$, we get $m_p$. $S_n$ and $D$ then become the categorical specifications alongside $m_p$ that $m$ is built on. The numerical predictors of $m_p$ depends on $p$'s statline. However, it is also highly likely that $m$ may not be built if $p$ does not have any $F$ in a particular $s \in S_n$ or a particular $d \in D$. If this is the case, then we avoid building $m$ and we will use $n$ to replace $m$ as the deferring model, where $n$ is only $p$'s season average free throw percentage
 
-Here is the visualization of this how $p$'s models may vary depending on $D$ (the rows) and $S_n$ (the columns). Note, $n$ may be at any index of the array, it is just demonstrated that $n$ exists when a instance of $S_n$ and $D$ is not readily available
+Here is the visualization of this how $p$'s models may vary depending on $D$ (the rows) and $S_n$ (the columns). Note, $n$ may be at any index of the array, it is just demonstrated that $n$ exists when a instance of $S_n$ or $D$ is not readily available
 
 ```{=tex}
 \begin{array}{c|ccccccc} 
@@ -185,9 +185,10 @@ V_L & m_{1.1\times V_L} & \cdots & \cdots & \ddots & m_{1.5\times V_L} & \cdots 
 V_D & m_{1.1\times V_D} & \cdots & n & \cdots & \cdots & \cdots & m_{6.5\times V_D}\\
 \end{array}
 ```
+
 ### Report Intentions
 
-The rest of this report will showcase the data we are working with and their cleaned sets. Then, our analyses gets divided into three parts: part one will focus on finding $m$ for some $p$ and part two will aim to build $f$. Part three aims to show how $f$ can be used in as many informational contexts as possible. We will discuss about $f$ and highlight its pros and cons in our [Discussion] section. Finally, in our [Conclusion] section, we will provide alternative approaches to our query and also provide possible extensions as well.
+The rest of this report will showcase the data we are working with and their cleaned sets. Then, our analyses gets divided into three parts: part one will focus on finding $m_p$ for some $p$ and part two will aim to build $m$. Part three aims to build $f$ and show how $f$ can be used in as many informational contexts as possible. We will discuss about $f$ and highlight its pros and cons in our [Discussion] section. Finally, we will also provide alternative approaches to our query and also provide possible extensions as well.
 
 # Analysis
 
@@ -422,7 +423,11 @@ Before we jump in, let's use the context of one particular player $p = \text{LeB
 
 Before we adjust $m_p$ as well, we need to join LeBron's statline to his free throw data. This will allow us to graph off of one dataset.
 
-```{r m-LeBron-data, echo = TRUE}
+```{r LeBron, echo = TRUE}
+player_of_interest = "LeBron James"
+split_names <- strsplit(player_of_interest, " ")
+last_name = tail(split_names[[1]], 1)
+
 ##get the team based on our player
 team_of_interest = clean_player_data %>%
   filter(player == player_of_interest) %>% pull(player_team) %>% str_extract(regex("\\w+"))
@@ -588,12 +593,69 @@ First, our goal was to find, for free throw $F$, the best probability $P(F)$. We
 
 In this section, we analyzed what the crux of this report was about: the in-game context of $F$. We looked at how the stage of the game $S_n$ and the point differential $D$, influence $F$ and therefore $P(F)$. What we found was that $D$ was really inconsequential to $P(F)$. Only certain $S_n$ influenced $P(F)$. Painfully, we had to exclude $D$ and move on. This gave us an updated model $m$ that used the results of $m_p$ and $S_n$ as its predictors. 
 
-The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`), $m_p$ (`model_prob`), and $m$ (`model_prob_new`).  You can see that one noticeable difference is that each player has a different $P(F)$ under $m$ but shares the same $P(F)$ under $n$ and $m_p$ regardless of $S_n$. Also notice that for the first line of output shown above, $p = \text{Joel Embiid}$ has the same $P(F)$ under $m_p$ and $m$. Recall that $m$ only witnessed significance for certain $s \in S_n$ which we collectively called $s_n$. $s = 1.2$ is not included in $s_n$, so $m$ deffered to the $P(F)$ calculated by $m_p$. 
+The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`), $m_p$ (`model_prob`), and $m$ (`model_prob_new`).  You can see that one noticeable difference is that each player has a different $P(F)$ under $m$ but shares the same $P(F)$ under $n$ and $m_p$ regardless of $S_n$. 
 
-
-Now, one item remains, creating $f$. Again, we stated that a paramater of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$
 
 #### Analysis: Finding $f$
+
+Now, one item remains, creating $f$. Again, we stated that a parameter of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$. Once these are passed in, we wish to give a table of all $P(F)$ across all models ${n, m_p, m}$ related to $p$ alongside relevant statistics of each model. 
+
+Recall that we made one important assumption of $F$. 
+$$
+F \sim \text{Bernoulli(p)}
+$$
+
+This means that we can interpret $F$ as a Bernoulli random variable with parameter $p = P(F)$. Doing so gives us a great way to evaluate the efficiency of our models. 
+
+We simply randomly generate one sample $F$ call it $F_r$.  $F_r$ will be parameterized by $P(F)$ given from our models. Then, we can simply compare the outcome of $F_r$ against the outcome $F$ as a measure of model accuracy. We will do this for all given $p$ and $S_n$ and return the results through our function $f$. 
+
+```{r function-setup}
+##first, let's add all the P from our model 
+## make predictions on all of the data
+ft_model_probs <- predict.glm(ft_model_train, ft_complete, type='response')
+
+##add each probability to the corresponding player
+NUM_PLAYERS = nrow(ft_complete)
+ft_complete <- ft_complete %>%
+  mutate(model_prob_new = 0)
+for(i in 1:NUM_PLAYERS) {
+  ft_complete$model_prob_new[i] = ft_model_probs[[i]]
+}
+
+##show only the player, n, m_p, and m
+ft_model_data <- ft_complete %>% ungroup() %>%
+  select(stage_of_game, player, pts, ft_pct, model_prob, model_prob_new) %>%
+  rename(null_model = ft_pct, 
+         player_model = model_prob, 
+         full_model = model_prob_new)
+
+##print the first 10 lines of this new data
+head(ft_model_data, n = 10)
+```
+
+The output shown above shows $P(F)$ across the models $n$ (`null_model`), $m_p$ (`player_model`), and $m$ (`full_model`).
+
+```{r function-building}
+
+NUM_SAMPLES = 1
+NUM_TRIALS = 1
+
+
+get_ft_prob <- function(player_name, stage_in_game) {
+  player_fts <- ft_model_data %>%
+    filter(player == player_name & stage_of_game == stage_in_game) %>%
+    mutate(F_null = rbinom(NUM_SAMPLES, NUM_TRIALS, null_model)) 
+  
+  null_ft_prob = player_fts %>% pull(null_model) %>% mean()
+  
+  return(null_ft_prob)
+}
+
+```
+
+
+
+$$\text{Accuracy(m)} \geq \text{Accuracy(n)}$$
 
 # Discussion
 
@@ -601,9 +663,7 @@ In this section, we will discuss the results of our tests and models and their i
 
 ### Comparing the Graphs & Overall Conclusions
 
-Given that we are aiming to deliver an accurate model, the confusion matrix schema will be utilized to give fundamental statistics of our model. However, if there is one ultimate goal, we wish that based on our confusion matrix,
 
-$$\text{Accuracy(m)} \geq \text{Accuracy(n)}$$
 
 #### Graph Comparisons Discussion
 
