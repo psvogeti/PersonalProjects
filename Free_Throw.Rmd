@@ -414,24 +414,11 @@ Again the above output is decent because our model probabilities in `model_prob`
 
 This concludes part 1 of building a holistic $m_p$. In this sub-section, we have built $m_p$ using only the statline of $p$ to give an adjusted free throw probability $P(F)$. In the next section, we will adjust $P(F)$ given by $m_p$ by factoring in $S_n$ and $D$ and build a function $f$ to output this adjusted $P(F)$. 
 
-#### Analysis: Finding $f$
+#### Analysis: Finding $m$
 
 At this point, we have accounted for our numerical predictors. What we need to do is provide our model context with our categorical variables $S_n$ and $D$ and see how that may impact $P(F)$
 
 Before we jump in, let's use the context of one particular player $p = \text{LeBron James}$. Why him? LeBron has been in the conversation for the greatest player of all time in the NBA. He has been mentioned in countless in-game situations and hypotheticals, making him a robust choice to see what we need to consider when factoring in $S_n$ and $D$
-
-In order to reflect our table outlined in the [Methodology] section, we need to get $n$. Since $n$ is merely the null model with its intercept term representing the season average free throw percentage, this is a quick fetch.
-
-```{r n-LeBron, echo=TRUE}
-player_of_interest = "LeBron James"
-split_names <- strsplit(player_of_interest, " ")
-last_name = tail(split_names[[1]], 1)
-
-null_model_lebron <- clean_player_data %>% 
-  filter(player == player_of_interest) %>% pull(ft_pct) %>% mean()
-
-null_model_lebron
-```
 
 Before we adjust $m_p$ as well, we need to join LeBron's statline to his free throw data. This will allow us to graph off of one dataset.
 
@@ -471,7 +458,7 @@ ggplot(data=free_throws_lebron, aes(x=stage_of_game, y=pts, color = pt_differenc
 
 There is a lot going on in this faceted collection of graphs.
 
-We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection.
+We notice that the first quarter facet shows a lot of $F$ under $T_G$. This is expected because we defined it to be $T_G = [-5, 5)$ which is highly likely to be the result in the first quarter. This similar observation can be seen in "quarter 5" (overtime) facet, where $T_G$ makes its blanket appearance again. This is also expected behavior because in overtime, the teams have already played four quarters of basketball to have a tie game, and so the competition will be back and forth in overtime. Analyzing the fourth quarter facet, we see a greater density of missed $F$ than in any other facet. This is what we had a hunch on early on in this report. However, across all facets, in seems that $T_G$ dominates in the missed $F$ collection. 
 
 The main takeaway with regards to this report is this: it is worth our time to use our categorical predictors $S_n$ and $D$ when dealing with $f$. Doing so, will help us model situations we saw in facets 1, 4, and 5.
 
@@ -480,35 +467,133 @@ First we link the probabilities outputted by $m_p$ to our data set.
 ```{r adding-p}
 ##first, let's add all the P from our model 
 ## make predictions on all of the data
-ft_model_complete <- predict.glm(ft_model_train, ft_complete, type='response')
+ft_model_probs <- predict.glm(ft_model_train, ft_complete, type='response')
 
 ##add each probability to the corresponding player
 NUM_PLAYERS = nrow(ft_complete)
 ft_complete <- ft_complete %>%
   mutate(model_prob = 0)
 for(i in 1:NUM_PLAYERS) {
-  ft_complete$model_prob[i] = ft_model_complete[[i]]
+  ft_complete$model_prob[i] = ft_model_probs[[i]]
 }
 ```
 
 Now, we can use `model_prob` as a predictor when dividing our data along `stage_of_game` and `pt_difference_cat`. 
 ```{r ft-model-full-setup}
-ft_dummy <- ft_complete
+##convert to factors so that S_n and D are treated categorically
+ft_complete$stage_of_game <- as.factor(ft_complete$stage_of_game)
+ft_complete$pt_difference_cat <- as.factor(ft_complete$pt_difference_cat)
 
-ft_dummy <- ft_dummy %>%
-  group_by(stage_of_game, pt_difference_cat) %>%
-  mutate(ft_pct_by_group = mean(pts))
+##create the log-reg model on p-statline
+ft_model.cats <- glm(pts ~ stage_of_game + pt_difference_cat + model_prob, data = ft_complete, family = "binomial") 
+
+##view the summary
+summary(ft_model.cats)
 ```
 
+Well this is slightly awkward! After spending so much time talking about the potential impacts of $S_n$ and $D$, we only found so many significant $s \in S_n$ and no significant $D$! What is interesting to see by the summary output is our significant $s_n$ are 
+(under $\alpha = 0.05$): 
+
+For 
+$$
+s_n \in S_n \mid S_n = \{1.1, 1.2, 1.3, 1.4, 1.5, 2.1, ..., 2.5, 3.1, ..., 6.5\}
+$$
+
+We see
+$$
+s_n = {1.2, 1.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2}
+$$
 
 
-```{r ft-model-full}
+What is even more interesting is the positive effect that our model observes. 
 
+> This model implies that for a free throw taken in $s = 1.2$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.15$ when compared to other contexts. 
+
+> This model implies that for a free throw taken in $s = 1.3$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts. 
+
+> This model implies that for a free throw taken in $s = 2.4$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.18$ when compared to other contexts. 
+
+> This model implies that for a free throw taken in $s = 3.1, 3.2, 3.3$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.25$ when compared to other contexts. 
+
+> This model implies that for a free throw taken in $s = 3.4, 3.5$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.17$ when compared to other contexts.
+
+> This model implies that for a free throw taken in $s = 4.1$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.22$ when compared to other contexts. 
+
+> This model implies that for a free throw taken in $s = 4.2$ we can expect in increase in the log-odds of $F$ being made by $\approx 0.16$ when compared to other contexts. 
+
+
+Given that some $s$ are certainly significant, it is worth it to keep $S_n$ as a predictor in our full model $m$. However, we have ruled out $D$ as being a predictor of $F$. Thus, though it is hard to say goodbye, we must do the needful if we wish to obtain an accurate $m$ which we can use in our function $f$. 
+
+This gives us a new updated table from our [Methodology] section: 
+```{=tex}
+\begin{array}{c|ccccccc} 
+
+& 1.1 & 1.2 & 1.3 & 1.4 & 1.5 & \cdots & 6.5 \\
+
+
+H_D & m_{1.1} & m_{1.2} & m_{1.3} & m_{1.4} & m_{1.5} & \cdots & m_{6.5}\\ 
+
+H_L & m_{1.1} & \ddots & m_{1.3} & \cdots & \cdots & \cdots & \vdots\\ 
+
+T_G & m_{1.1} & n & \ddots & m_{1.4} & n & \cdots & \vdots\\ 
+
+V_L & m_{1.1} & \cdots & \cdots & \ddots & m_{1.5} & \cdots & \vdots\\
+
+V_D & m_{1.1} & \cdots & n & \cdots & \cdots & \cdots & m_{6.5}\\
+\end{array}
+```
+Where we are no longer concerned about $D$. 
+
+Now we train and test our model at an 80% train, 20% test split using the same method shown earlier. 
+```{r ft-model-full, echo=TRUE}
+##split data into training (80%) and testing (20%)
+TRAIN_SPLIT = 0.8
+TEST_SPLIT = 0.2
+DATA_SIZE = nrow(ft_complete)
+
+##reproduceable split
+set.seed(715)
+##choose between indexes 1, 2 with one index at 80% chance and the other at 20%
+index_choice <- sample(2, DATA_SIZE, replace = TRUE, prob=c(TRAIN_SPLIT, TEST_SPLIT))
+train_data <- ft_complete[index_choice==1, ]
+test_data <- ft_complete[index_choice==2, ]
+
+##train our model
+ft_model_train <- glm(pts ~ stage_of_game + model_prob, data = train_data, family = "binomial")
+
+##test our trained model
+ft_model_test <- predict.glm(ft_model_train, test_data, type='response')
+
+##print out the results of our tested predictions
+head(ft_model_test, n = 10)
+
+##add each model predicted free throw to the corresponding player
+NUM_PLAYERS = nrow(test_data)
+test_data_predictions <- test_data %>% mutate(model_prob_new = 0)
+for (i in 1:NUM_PLAYERS) {
+  test_data_predictions$model_prob_new[i] = ft_model_test[[i]]
+}
+
+##show only the player, n, m_p, and m
+test_data_predictions <- test_data_predictions %>% ungroup() %>%
+  select(stage_of_game, player, pts, ft_pct, model_prob, model_prob_new)
+
+##print the first few lines of our predicted data
+head(test_data_predictions, n = 10)
 ```
 
+A lot has happened thus far, let us quickly recap. 
+
+First, our goal was to find, for free throw $F$, the best probability $P(F)$. We did this based on factoring in a player $p$'s statline, and created a model $m_p$ to use $p$'s statline to find a better $P(F)$ than the null model $n$ which is simply the `ft_pct` vector seen above. We did this in [Analysis: Finding $m_p$]. 
+
+In this section, we analyzed what the crux of this report was about: the in-game context of $F$. We looked at how the stage of the game $S_n$ and the point differential $D$, influence $F$ and therefore $P(F)$. What we found was that $D$ was really inconsequential to $P(F)$. Only certain $S_n$ influenced $P(F)$. Painfully, we had to exclude $D$ and move on. This gave us an updated model $m$ that used the results of $m_p$ and $S_n$ as its predictors. 
+
+The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`), $m_p$ (`model_prob`), and $m$ (`model_prob_new`).  You can see that one noticeable difference is that each player has a different $P(F)$ under $m$ but shares the same $P(F)$ under $n$ and $m_p$ regardless of $S_n$. Also notice that for the first line of output shown above, $p = \text{Joel Embiid}$ has the same $P(F)$ under $m_p$ and $m$. Recall that $m$ only witnessed significance for certain $s \in S_n$ which we collectively called $s_n$. $s = 1.2$ is not included in $s_n$, so $m$ deffered to the $P(F)$ calculated by $m_p$. 
 
 
-#### Analysis: Using $f$
+Now, one item remains, creating $f$. Again, we stated that a paramater of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$
+
+#### Analysis: Finding $f$
 
 # Discussion
 
