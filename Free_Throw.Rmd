@@ -22,7 +22,7 @@ library(kableExtra)
 
 # Introduction
 
-As the new 2023-2024 NBA season kicks into gear, and as I am beginning to learn more about predictive modeling, I was interested in seeing if there was a way to model the NBA free throw within the context the shot is performed. That context includes but is not limited to, the timestamp at which the free throw was taken, the player that took the free throw, and whether it was off of a contested interior shot or a contested perimeter shot, or if it was part of the bonus reward.
+As the new 2023-2024 NBA season kicks into gear, and as I am beginning to learn more about predictive modeling, I was interested in seeing if there was a way to model the NBA free throw within the context the shot is performed. That context includes but is not limited to, the timestamp at which the free throw was taken, the player that took the free throw, and whether the score of the game has any impact on the shot.
 
 ### The Focus Question
 
@@ -131,7 +131,7 @@ Similarly, we will do the same for game point differential $D$. $D$ is categoric
 
 We use the $S_n$ assumption above to make this assumption. The assumption is that for any and all free throws, for the categorically same $D$ occurring in $S_n$ , foul shot $F$ with probability $P(F)$ is the same.
 
-Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($n = 1.1$) with the ***home*** team up by 10 ($D = H_L$). Similarly, consider the exact same foul just moments later ($n=1.1$) but now the ***visiting*** team is up by 5 ($D = V_L$). Foul shot $F \in L$ has a success probability $p = P(F)$. Across both cases $D$ is different so $P(F)$ may be different. But if $L$ occurs under the same $D$, $P(F)$ is the same. The only thing differentiating $P(F)$ is $D$.
+Consider a shooting regular foul $L$ on a two-point shot that occurred at the very beginning of the first quarter ($S_n = 1.1$) with the home team up by 10 ($D = H_L$). Similarly, consider the exact same foul just moments later ($S_n=1.1$) but now the visiting team is up by 5 ($D = V_L$). Foul shot $F \in L$ has a success probability $p = P(F)$. Across both cases $D$ is different so $P(F)$ may be different. But if $L$ occurs under the same $D$, $P(F)$ is the same. The only thing differentiating $P(F)$ is $D$.
 
 Moreover, while in $L$, $F$ is independent and identical. This gives us the following:
 
@@ -195,7 +195,7 @@ The rest of this report will showcase the data we are working with and their cle
 
 Here we will clean up our mentioned data sets and add and remove certain variables as needed. Any significant changes are reported at the bottom of the clean up section.
 
-```{r read-print-raw-data}
+```{r read-print-raw-data, echo=TRUE}
 
 raw_pbp_2022_data <- read.csv("../data/datanba_2022.csv")
 
@@ -321,23 +321,16 @@ head(ft_complete, n = 10)
 
 #### Analysis: Finding $m_p$
 
-Now comes the fun part, building $m_p$! Since we are predicing on a binary result, logisitic regression makes sense here.
+Now comes the fun part, building $m_p$! Since we are predicing on a binary result, logistic regression makes sense here.
 
-Here we define $m_p$ to be the shooting stats of $p$ as predictors of $F$. We will factor in $S_n$ and $D$ in [Analysis: Finding $f$]
+Here we define $m_p$ to be the shooting stats of $p$ as predictors of $F$. We will factor in $S_n$ and $D$ in [Analysis: Finding $m$]
 
 The goal is to let $m_p \sim \sigma(m_\text{lin})$ where $m_\text{lin}$ is the linear model:
 
 $$
-Y = \beta_0 + \beta_\text{min_per_gm}X_\text{min_per_gm} +\\
-\beta_\text{usage_pct}X_\text{usage_pct} +\\
-\beta_\text{fgm}X_\text{fgm} + 
-\beta_\text{fga}X_\text{fga} + 
-\beta_\text{fg_pct}X_\text{fg_pct} + 
-\beta_\text{eff_fg_pct}X_\text{eff_fg_pct} +\\
-\beta_\text{ftm}X_\text{ftm} +
-\beta_\text{fta}X_\text{fta} +
-\beta_\text{ft_pct}X_\text{ft_pct} +
-\beta_\text{ft_rate}X_\text{ft_rate}
+Y = \beta_0 + \beta_\text{min_per_gm}X_\text{min_per_gm} + \\  \beta_\text{usage_pct}X_\text{usage_pct} + \\
+\beta_\text{fgm}X_\text{fgm} + \beta_\text{fga}X_\text{fga} +  \beta_\text{fg_pct}X_\text{fg_pct} \beta_\text{eff_fg_pct}X_\text{eff_fg_pct} + \\
+\beta_\text{ftm}X_\text{ftm} + \beta_\text{fta}X_\text{fta} + \beta_\text{ft_pct}X_\text{ft_pct} + \beta_\text{ft_rate}X_\text{ft_rate}
 $$
 
 ```{r m-p, echo=TRUE}
@@ -352,12 +345,12 @@ summary(ft_model)
 Based on our summary, it seems we can comfortably reduce the complexity of $m_p$. Since we are operating under $\alpha = 0.05$, we choose to keep:
 
 $$
-\beta_\text{min_per_gm},\\
-\beta_\text{fg_pct}, \beta_\text{eff_fg_pct},\\
-\beta_\text{ftm}, \beta_\text{fta},\\ \beta_\text{ft_pct},\beta_\text{ft_rate} 
+\beta_\text{min_per_gm},\newline
+\beta_\text{fg_pct}, \beta_\text{eff_fg_pct},\newline
+\beta_\text{ftm}, \beta_\text{fta},\newline \beta_\text{ft_pct},\beta_\text{ft_rate} 
 $$
 
-```{r ft-model-2}
+```{r ft-model-2, echo=TRUE}
 ##create the log-reg model on p-statline
 ft_model_updated <- glm(pts ~ min_per_gm + fg_pct + eff_fg_pct + ftm + fta + ft_pct +ft_rate, data = ft_complete, family = "binomial") 
 
@@ -373,7 +366,7 @@ Now, we begin training and testing our data. The method we use is not ours, rath
 
 The splitting method we use can be found [here](https://www.youtube.com/watch?v=Irlfb8ELzis&ab_channel=RidvanGedik)
 
-```{r train-test-split}
+```{r train-test-split, echo=TRUE}
 ##split data into training (80%) and testing (20%)
 TRAIN_SPLIT = 0.8
 TEST_SPLIT = 0.2
@@ -411,7 +404,7 @@ head(test_data_predictions, n = 10)
 
 Again the above output is decent because our model probabilities in `model_prob` are very close to `ft_pct`. But before we evaluate `model_prob` accuracy, we still have not done anything with $S_n$ and $D$ yet!
 
-This concludes part 1 of building a holistic $m_p$. In this sub-section, we have built $m_p$ using only the statline of $p$ to give an adjusted free throw probability $P(F)$. In the next section, we will adjust $P(F)$ given by $m_p$ by factoring in $S_n$ and $D$ and build a function $f$ to output this adjusted $P(F)$.
+This concludes part 1 of building a holistic $m_p$. In this sub-section, we have built $m_p$ using only the statline of $p$ to give an adjusted free throw probability $P(F)$. In the next section, we will adjust $P(F)$ given by $m_p$ by factoring in $S_n$ and $D$ to create $m$.
 
 #### Analysis: Finding $m$
 
@@ -467,7 +460,7 @@ The main takeaway with regards to this report is this: it is worth our time to u
 
 First we link the probabilities outputted by $m_p$ to our data set.
 
-```{r adding-p}
+```{r adding-p, echo=TRUE}
 ##first, let's add all the P from our model 
 ## make predictions on all of the data
 ft_model_probs <- predict.glm(ft_model_train, ft_complete, type='response')
@@ -483,7 +476,7 @@ for(i in 1:NUM_PLAYERS) {
 
 Now, we can use `model_prob` as a predictor when dividing our data along `stage_of_game` and `pt_difference_cat`.
 
-```{r ft-model-full-setup}
+```{r ft-model-full-setup, echo=TRUE}
 ##convert to factors so that S_n and D are treated categorically
 ft_complete$stage_of_game <- as.factor(ft_complete$stage_of_game)
 ft_complete$pt_difference_cat <- as.factor(ft_complete$pt_difference_cat)
@@ -595,7 +588,7 @@ The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`)
 
 Now, one item remains, creating $f$. Again, we stated that a parameter of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$. Once these are passed in, we wish to give a table of all $P(F)$ across all models ${n, m_p, m}$ related to $p$ alongside relevant statistics of each model.
 
-Recall that we made one important assumption of $F$. 
+Recall that we made one important assumption of $F$.
 
 $$
 F \sim \text{Bernoulli(p)}
@@ -710,7 +703,7 @@ get_ft_table("Grayson Allen", 6.5)
 
 Before leaving the analysis, we wish to plot all $F$ against $S_n \times D$. It is a rather beautiful graph, but also gives quite a bit of insight on why we saw the results for $S_n$ and $D$ when crafting $m$
 
-```{r all-F-graph}
+```{r all-F-graph, echo=TRUE}
 ggplot(ft_complete, aes(x=stage_of_game, y=pts, color = pt_difference_cat)) + 
   geom_jitter(alpha = .5, height = .05) +
   geom_smooth(formula = "y ~ 1 + x", se=FALSE, method = "glm", method.args = list(family = "binomial")) +
@@ -737,26 +730,23 @@ In this section, we will discuss the results of our tests and models and their i
 
 ### Comparing the Graphs & Overall Conclusions
 
-
 #### Graph Comparisons Discussion
 
-Overall, given how much speculation was put on $S_n$ and $D$, it was surprising to see how insignificant both were. For one, $m$ chose not to include $D$ at all. For another, only a select few $S_n$ really had some impact on $P(F)$. Again, looking at the final graph that stored all $F$ across $S_n$ and $D$, we see just how random $F$ is if we only took those two into account. 
+Overall, given how much speculation was put on $S_n$ and $D$, it was surprising to see how insignificant both were. For one, $m$ chose not to include $D$ at all. For another, only a select few $S_n$ really had some impact on $P(F)$. Again, looking at the final graph that stored all $F$ across $S_n$ and $D$, we see just how random $F$ is if we only took those two into account.
 
 ### Shortcomings and Limitations
 
-
 #### Limitation 1: $m_p$ and $m$
 
-Recall that $m$ was built on $m_p$. This was probably not the smartest move on us. For one, $m_p$ already gave its own family of $P(F)$ and factored in the player only. When we created $m$, we used that $P(F)$ set as a regressor for $m$. In other words, if we were going to factor in $S_n$ and $D$, the best time to do it was when dealing with $m_p$, not $m$.  One advantage this gave us was to allow the comparison of models $\{n, m_p, m\}$. But again, this came at a cost as $m$ tends to overestimate $P(F)$ severely. In the case of $p = \text{Zach LaVine}$, his $P(F) \approx 99\%$ when $S_n = 6.3$, a truly eye-opening result. 
+Recall that $m$ was built on $m_p$. This was probably not the smartest move on us. For one, $m_p$ already gave its own family of $P(F)$ and factored in the player only. When we created $m$, we used that $P(F)$ set as a regressor for $m$. In other words, if we were going to factor in $S_n$ and $D$, the best time to do it was when dealing with $m_p$, not $m$. One advantage this gave us was to allow the comparison of models $\{n, m_p, m\}$. But again, this came at a cost as $m$ tends to overestimate $P(F)$ severely. In the case of $p = \text{Zach LaVine}$, his $P(F) \approx 99\%$ when $S_n = 6.3$, a truly eye-opening result.
 
 #### Limitation 2: $n$
 
-If one were to run our $f$ a lot of times, more often than not, $n$ trumps $m_p$ and $m$. This result is not surprising given how the data was fetched to begin with. Recall that $n$ was simply the season average free throw percentage of $p$. That season average free throw percentage is based on the 2021-2022 NBA Season. The data? The data was queried from the 2021-2022 NBA season. $n$ has a clear advantage because it is a result of our data, so it will tend to have the best accuracy compared to our models. This is also a reason why our models $m_p$ and $m$ tend to overestimate $P(F)$ because of the positive effects of the $\beta \in m_p$ we observed when adding to $n$ and also similar positive effects of $S_n$ on $m_p$ we observed. 
-
+If one were to run our $f$ a lot of times, more often than not, $n$ trumps $m_p$ and $m$. This result is not surprising given how the data was fetched to begin with. Recall that $n$ was simply the season average free throw percentage of $p$. That season average free throw percentage is based on the 2021-2022 NBA Season. The data? The data was queried from the 2021-2022 NBA season. $n$ has a clear advantage because it is a result of our data, so it will tend to have the best accuracy compared to our models. This is also a reason why our models $m_p$ and $m$ tend to overestimate $P(F)$ because of the positive effects of the $\beta \in m_p$ we observed when adding to $n$ and also similar positive effects of $S_n$ on $m_p$ we observed.
 
 #### Limitation 3: $F$
 
-An additional limitation was the oversimplification of $F$. Recall that $F$ was binary, and the Bernoulli random variable was chosen to model it. However, one important factor not really touched on about $F$ is this: $F$ generally, for all $p$, has a really high success rate. A quick calculation shows us that $F$ has a mean probability $P_\text{mean}(F) \approx 78\%$. That is an obnoxiously high number! 
+An additional limitation was the oversimplification of $F$. Recall that $F$ was binary, and the Bernoulli random variable was chosen to model it. However, one important factor not really touched on about $F$ is this: $F$ generally, for all $p$, has a really high success rate. A quick calculation shows us that $F$ has a mean probability $P_\text{mean}(F) \approx 78\%$. That is an obnoxiously high number!
 
 Typically, when evaluating a logistic regression model, there is some threshold $t \in [0, 1]$ that is chosen such that if for some binary variable $X$
 
@@ -768,27 +758,26 @@ X =
 \end{cases}
 $$
 
-However, it is hard to choose $t$ when $P_\text{mean}(F) \approx 78\%$. Thus, using $F$ as a Bernoulli, though easy to calculate accuracy, may not be the best method for evaluating $F$ and the efficiency of the model set $\{n, m_p, m\}$ and the probability set that results from it. 
-
+However, it is hard to choose $t$ when $P_\text{mean}(F) \approx 78\%$. Thus, using $F$ as a Bernoulli, though easy to calculate accuracy, may not be the best method for evaluating $F$ and the efficiency of the model set $\{n, m_p, m\}$ and the probability set that results from it.
 
 ### Alternate Approaches
 
 #### Alternate Approach 1: Use a different $n$
 
-One obvious approach would be to fetch all $n$ from the 2020-2021 NBA Season and then use that to build $m_p$ and $m$. This would allow for all of the $\beta$ we chose in $m_p$ and the categorical $S_n$ and potentially $D$ to correct for the error inherent by using the prior season data as a reference point for the current season data.   
+One obvious approach would be to fetch all $n$ from the 2020-2021 NBA Season and then use that to build $m_p$ and $m$. This would allow for all of the $\beta$ we chose in $m_p$ and the categorical $S_n$ and potentially $D$ to correct for the error inherent by using the prior season data as a reference point for the current season data.
 
 #### Alternate Approach 2: Focus on $m$
 
-Another alternate approach would be to avoid building $m_p$ altogether and just build some model $m$. This would not only reduce the expensive calculation costs, but it would also avoid the trivial case of adding more predictors. Using CV-techniques and Variable Selection techniques like Ridge Regression and LASSO and choosing a $\lambda$ to penalize overfitting as we encountered would also strengthen $m$ when compared to our lackluster model. 
+Another alternate approach would be to avoid building $m_p$ altogether and just build some model $m$. This would not only reduce the expensive calculation costs, but it would also avoid the trivial case of adding more predictors. Using CV-techniques and Variable Selection techniques like Ridge Regression and LASSO and choosing a $\lambda$ to penalize overfitting as we encountered would also strengthen $m$ when compared to our lackluster model.
 
 ### Potential Future Directions
 
 #### Future Direction 1
 
-One future direction that a project like this can go is in predicting the NBA 3-point shot, 2-point shot, and overall field-goal percentage.  The methods used above can be translated easily to such expeditions, albeit a better choice of variables is needed to do so. 
+One future direction that a project like this can go is in predicting the NBA 3-point shot, 2-point shot, and overall field-goal percentage. The methods used above can be translated easily to such expeditions, albeit a better choice of variables is needed to do so.
 
 #### Future Direction 2
 
-Another future direction this project allows is for predicting home-team vs away-team advantages only. Use only this distinction as a categorical variable and keep all $p$ statline the same. Then, choose to find some $m$ for some binary outcome variable in the basketball game that may be impacted by this team-based distinction. 
+Another future direction this project allows is for predicting home-team vs away-team advantages only. Use only this distinction as a categorical variable and keep all $p$ statline the same. Then, choose to find some $m$ for some binary outcome variable in the basketball game that may be impacted by this team-based distinction.
 
 # References
