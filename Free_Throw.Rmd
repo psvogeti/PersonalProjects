@@ -345,9 +345,9 @@ summary(ft_model)
 Based on our summary, it seems we can comfortably reduce the complexity of $m_p$. Since we are operating under $\alpha = 0.05$, we choose to keep:
 
 $$
-\beta_\text{min_per_gm},\newline
-\beta_\text{fg_pct}, \beta_\text{eff_fg_pct},\newline
-\beta_\text{ftm}, \beta_\text{fta},\newline \beta_\text{ft_pct},\beta_\text{ft_rate} 
+\beta_\text{min_per_gm},\\
+\beta_\text{fg_pct}, \beta_\text{eff_fg_pct},\\
+\beta_\text{ftm}, \beta_\text{fta},\\ \beta_\text{ft_pct},\beta_\text{ft_rate} 
 $$
 
 ```{r ft-model-2, echo=TRUE}
@@ -490,11 +490,13 @@ summary(ft_model.cats)
 
 Well this is slightly awkward! After spending so much time talking about the potential impacts of $S_n$ and $D$, we only found so many significant $s \in S_n$ and no significant $D$! What is interesting to see by the summary output is our significant $s_n$ are (under $\alpha = 0.05$):
 
-For $$
+For 
+$$
 s_n \in S_n \mid S_n = \{1.1, 1.2, 1.3, 1.4, 1.5, 2.1, ..., 2.5, 3.1, ..., 6.5\}
 $$
 
-We see $$
+We see 
+$$
 s_n = \{1.2, 1.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2\}
 $$
 
@@ -586,7 +588,7 @@ The output shown above numerically shows $P(F)$ across the models $n$ (`ft_pct`)
 
 #### Analysis: Finding $f$
 
-Now, one item remains, creating $f$. Again, we stated that a parameter of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$. Once these are passed in, we wish to give a table of all $P(F)$ across all models ${n, m_p, m}$ related to $p$ alongside relevant statistics of each model.
+Now, one item remains, creating $f$. Again, we stated that a parameter of $f$ is $D$. But now, this is not the case. $f$ only needs two parameters: $p$ and $s \in S_n$. Once these are passed in, we wish to give a table of all $P(F)$ across all models $\{n, m_p, m\}$ related to $p$ alongside relevant statistics of each model.
 
 Recall that we made one important assumption of $F$.
 
@@ -596,7 +598,8 @@ $$
 
 This means that we can interpret $F$ as a Bernoulli random variable with parameter $p = P(F)$. Doing so gives us a great way to evaluate the efficiency of our models.
 
-We simply randomly generate one sample $F$ call it $F_r$. $F_r$ will be parameterized by $P(F)$ given from our models. Then, we can simply compare the outcome of $F_r$ against the outcome $F$ as a measure of model accuracy. We will do this for all given $p$ and $S_n$ and return the results through our function $f$.
+We simply randomly generate samples of $F$ (call it $F_r$). The number of samples of $F_r$  is equivalent to the count of $F$ in $s \in S_n$. $F_r$ will be parameterized by $P(F)$ given from our models. Then, we can simply compare the outcomes of all $F_r$ against the total outcomes of all $F$ as a measure of model accuracy. We will do this for all given $p$ and $S_n$ and return the results through our function $f$.
+
 
 ```{r function-setup, echo=TRUE}
 ##first, let's add all the P from our model 
@@ -628,40 +631,80 @@ head(ft_model_data, n = 10)
 
 The output shown above shows $F$ (`ft_result`), and $P(F)$ across the models $n$ (`null_model`), $m_p$ (`player_model`), and $m$ (`full_model`).
 
+
+
+
+
+One aspect of $f$ relies on us predicting $F$ via $F_r$: 
+
+For $F_r$, we can take advantage of the following property of Bernoulli and Binomial Random Variables
+
+Given random variables $X, Y$ where
+$$
+X \sim \text{Bernoulli(p)} \\ 
+Y \sim \text{Binomial(n, p)}
+$$
+$Y$ can be obtained from $X$ by generating $n$ samples of $X$ and totaling those samples. That is: 
+
+$$
+Y = \sum_{i = 1}^n {(x_i \in X)}
+$$
+This is equivalent to saying: 
+$$
+\text{Binomial(n, p)} = \sum_{i = 1}^n \text{Bernoulli(p)}
+$$
+
+
+This result allows us to compare the number of successes of $F_r$ to the actual successes of $F$ since $F$ is our observed with $P(F)$ given by $n$ and $F_r$ is our predicted true $P(F)$ given by $\{m_p, m\}$. 
+
 ```{r function-building, echo=TRUE}
-
+NUM_RVS = 1
 NUM_SAMPLES = 1
-NUM_TRIALS = 1
-
-
 get_ft_table <- function(player_name, stage_in_game) {
   ##get the requested data
   player_fts <- ft_model_data %>%
-    filter(player == player_name & stage_of_game == stage_in_game) %>%
-    ##generate F_r by each model
-    mutate(F_null = rbinom(NUM_SAMPLES, NUM_TRIALS, null_model)) %>%
-    mutate(F_player = rbinom(NUM_SAMPLES, NUM_TRIALS, player_model)) %>%
-    mutate(F_full = rbinom(NUM_SAMPLES, NUM_TRIALS, full_model))
+    filter(player == player_name & stage_of_game == stage_in_game)
+  
+  ##get the free throw data
+  made_fts = sum(player_fts$ft_result)
+  num_fts = nrow(player_fts)
+  
+  ##generate F_r for each free throw
+  player_fts <- player_fts %>%
+    mutate(F_null_bern = rbinom(NUM_RVS, NUM_SAMPLES, null_model)) %>%
+    mutate(F_player_bern = rbinom(NUM_RVS, NUM_SAMPLES, player_model)) %>%
+    mutate(F_full_bern = rbinom(NUM_RVS, NUM_SAMPLES, full_model))
+  
+  ##generate F_r for all free throws
+  player_fts <- player_fts %>%
+    mutate(F_null_ct = rbinom(NUM_RVS, num_fts, null_model)) %>%
+    mutate(F_player_ct = rbinom(NUM_RVS, num_fts, player_model)) %>%
+    mutate(F_full_ct = rbinom(NUM_RVS, num_fts, full_model))
   
   ## get the model probabilities
   null_model_prob = player_fts %>% pull(null_model) %>% mean()
   player_model_prob = player_fts %>% pull(player_model) %>% mean()
   full_model_prob = player_fts %>% pull(full_model) %>% mean()
   
-  ## get the model accuracy data
-  null_model_acc = mean(player_fts$F_null == player_fts$ft_result) 
-  player_model_acc = mean(player_fts$F_player == player_fts$ft_result)
-  full_model_acc = mean(player_fts$F_full == player_fts$ft_result)
+  ## get the model prediction data: [F] success ct vs [Fr] success ct
+  null_model_pred = mean(player_fts$F_null_ct) 
+  player_model_pred = mean(player_fts$F_player_ct)
+  full_model_pred = mean(player_fts$F_full_ct)
+  
+  ## get the model accuracy data: [F]  == [Fr]
+  null_model_acc = 1 - (abs(made_fts - null_model_pred)/made_fts)
+  player_model_acc = 1 - (abs(made_fts - player_model_pred)/made_fts)
+  full_model_acc = 1 - (abs(made_fts - full_model_pred)/made_fts)
   
   ## prep work for the data frame 
   plyr <- c(player_name)
-  num_fts <- nrow(player_fts)
   models <- c("NULL MODEL", "PLAYER MODEL", "FULL MODEL")
   model_prob <- c(null_model_prob, player_model_prob, full_model_prob)
   model_accuracy <- c(null_model_acc, player_model_acc, full_model_acc)
+  model_prediction <- c(null_model_pred, player_model_pred, full_model_pred)
   
   ## pool the columns into one data frame
-  ft_shots_df <- data.frame(plyr, num_fts, models, model_prob, model_accuracy)
+  ft_shots_df <- data.frame(models, plyr, num_fts, made_fts, model_prob, model_prediction, model_accuracy)
   
   ## table formatting
   ft_shots_df <- ft_shots_df %>%  
@@ -677,12 +720,19 @@ get_ft_table <- function(player_name, stage_in_game) {
 }
 ```
 
-Above we have built $f$. The output of $f$ consists of $p$ (`plyr`), the count of $F \mid \forall F \in s$ (`num_fts`) , the model set ${n, m_p, m}$ (`models`), the probability set $P(F)$ (`model_prob`), and the accuracy of the model set (`model_accuracy`)
+
+Above we have built $f$. The output of $f$ consists of: 
+   - `models` the model set ${n, m_p, m}$ 
+   - `plyr` the player shooting the free throw
+   - `num_fts` the number of free throw attempts by the `plyr` in this context
+   - `made_fts` the number of made free throws by the `plyr` in this context
+   - `model_prob` the probability given by the respective `models`
+   - `model_prediction` the predicted made free throws by the respective `models`
+   - `model_accuracy` the accuracy of `model_prediction` on `made_fts`
 
 Now, we simply use $f$ to our heart's content.
-
 ```{r calling-f, echo =TRUE}
-##get the table for Joel Embiid during Sn = 1.2
+##get the table for Jayson Tatum during Sn = 1.2
 get_ft_table("Jayson Tatum", 1.2)
 
 ##get the table for LeBron James during Sn = 2.5
@@ -748,7 +798,7 @@ If one were to run our $f$ a lot of times, more often than not, $n$ trumps $m_p$
 
 An additional limitation was the oversimplification of $F$. Recall that $F$ was binary, and the Bernoulli random variable was chosen to model it. However, one important factor not really touched on about $F$ is this: $F$ generally, for all $p$, has a really high success rate. A quick calculation shows us that $F$ has a mean probability $P_\text{mean}(F) \approx 78\%$. That is an obnoxiously high number!
 
-Typically, when evaluating a logistic regression model, there is some threshold $t \in [0, 1]$ that is chosen such that if for some binary variable $X$
+Typically, when evaluating a logistic regression model, there is some threshold $t \in [0, 1]$ that is chosen such that for some binary variable $X$
 
 $$
 X = 
