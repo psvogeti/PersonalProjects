@@ -307,11 +307,11 @@ $$
 Below is the **Time Per Possession** Calculation:
 
 -   `TPP` is the time per possession for that season
--   `TPT` is total possession time for that season
+-   `TOP` is total possession time for that season
 -   `POSS` is the total number of possessions for that season
 
 $$
-TPP = \frac {TPT} {POSS} * \frac {60\text{ seconds}} {1\text{ minute}}
+TPP = \frac {TOP} {POSS} * \frac {60\text{ seconds}} {1\text{ minute}}
 $$
 
 ```{r bos-time-poss}
