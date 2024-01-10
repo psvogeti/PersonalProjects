@@ -1,0 +1,111 @@
+---
+title: "NBA and the Mid-Range"
+author: "Pranav Vogeti"
+date: "2024-01-07"
+output: 
+  html_document:
+    css: customOutputScript.css
+---
+
+```{r message = FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(lubridate)
+library(kableExtra)
+library(sportyR)
+```
+
+
+# Introduction
+
+[Placeholder]
+
+### The Focus Question
+
+[Placeholder]
+
+### Motivation
+
+[Placeholder]
+
+# Background
+
+### About the Original Data
+
+[Placeholder]
+
+### Data Description
+
+[Placeholder]
+
+### The Key Variables
+
+[Placeholder]
+
+### Assumptions and Unusuality
+
+[Placeholder]
+
+### Report Intentions
+
+The rest of this report will focus on cleaning the data to fit our needs, and analyzing said data and fostering meaningful observations and conclusions. 
+
+
+
+# Analysis
+
+### Data Cleanup
+
+Here we will cleanup our data to fit our analysis needs. 
+
+### Data Summaries
+
+In this section we will display relevant summary statistics to get a sense of the data we are dealing with. 
+
+[Placeholder]
+
+### Analysis 1: 
+
+[Placeholder]
+
+### Analysis 2: 
+
+[Placeholder]
+
+# Discussion
+
+In this section, we will discuss the results of our tests and models and their implications in the context of our question and also their broader implications and limitations. 
+
+### Comparing the Graphs & Overall Conclusions
+
+#### Graph Comparisons Discussion
+
+[Placeholder]
+
+### Shortcomings and Limitations
+
+
+#### Limitation 1
+
+[Placeholder]
+
+#### Limitation 2
+
+[Placeholder]
+
+### Alternate Approaches
+
+
+#### Alternate Approach 1
+
+[Placeholder]
+
+#### Alternate Approach 2
+
+[Placeholder]
+ 
+### Potential Future Directions
+
+[Placeholder]
+
+# References
