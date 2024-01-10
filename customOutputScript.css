@@ -1,0 +1,20 @@
+/*select by the element type (p) and apply these configurations to p*/
+p{
+  color: DarkSlateGray; 
+  /* Fall back to Georgia if not available*/
+  font-family: 'Palatino Linotype', Georgia,  serif; 
+  font-weight: normal; 
+}
+
+/*select headers and apply these configurations to all headers*/
+h1, h2, h3, h4{
+  color: DarkSlateGray; 
+  /* Fall back to Georgia if not available*/
+  font-family: 'Palatino Linotype', Georgia,  serif; 
+  font-weight: normal; 
+}
+
+/* select body and applt these configuarations to the body */
+body {
+  background-color: papayawhip
+}
