@@ -39,26 +39,36 @@ The three point shot has become so commonplace that it is hard to find plays tha
 
 # Background
 
-### About the Original Data
+### About the Original Data: Play-by-Play
 
-[Placeholder]
+The author that has provided the data for us to use is Vladislav Shufinsky. He has compiled NBA play-by-play data from 1996-2022 and made it open-source on Kaggle to allow us to use it for excursions like this[^1].
 
-### Data Description
+[^1]: <https://www.kaggle.com/datasets/brains14482/nba-playbyplay-and-shotdetails-data-19962021/data>
 
-[Placeholder]
+The data set we will use will contain a whole season's log of play-by-play data from the 2021-2022 NBA season. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the files called "*datanba_YYYY.csv*" where YYYY is the season of choice. 
 
 ### The Key Variables
 
-[Placeholder]
+-   The key variables from the *Play-By-Play* we will use for this excursion:
+    -   `cl` the time stamp at which the significant play occurred
+    -   `de` the short form description of what the play was
+    -   `locX` the x-coordinate location of the `de` play
+    -   `locY` the y-coordinate location of the `de` play
+    -   `hs` the home team total points at the `cl` moment
+    -   `vs` the visiting team total points at the `cl` moment
+    -   `pts` the pts scored by the respective `hs` or `vs` at the `cl` moment
+    -   `PERIOD` the quarter of the game so as to distinct `cl`
+    -   `GAME_ID` the numerical identifier of the game being played
 
 ### Assumptions and Unusuality
 
-[Placeholder]
+A giant aspect of this report relies on the location data: `locX` and `locY`. The way we define the type of shot performed agrees with the NBA standard. However, there are certainly edge cases where we classify a shot differently when compared to the actual scorekeeper's book. Such edge cases are rare, but can and will happen during this excursion. An example of this case can be found in Game 6 of the 2021 NBA Eastern Conference Finals, when the Bucks played the Nets. In that game, Kevin Durant took a shot that had merits to be a three, but was ruled as a two because of his shoe being on the three point line. We will interpret all shots that show on the lmarking lines as a two. 
+
+Another aspect of this report is that we are not necessarily evaluating the player's position. This is more of a holistic look at the shot architecture rather than a case-by-case shot outlook. So, a shot taken at the three point line by a Center will be treated the exact same as that shot taken by a Point Guard. We are just interested in looking at a broad look at shot behavior without delving too much into particulars. 
 
 ### Report Intentions
 
 The rest of this report will focus on cleaning the data to fit our needs, and analyzing said data and fostering meaningful observations and conclusions. 
-
 
 
 # Analysis
