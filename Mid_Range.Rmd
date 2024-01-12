@@ -5,6 +5,8 @@ date: "2024-01-07"
 output: 
   html_document:
     css: customOutputScript.css
+    toc: true
+    toc_float: true
 ---
 
 ```{r message = FALSE, include=FALSE}
@@ -31,7 +33,7 @@ There are many different types of offensive plays in the NBA. Some plays are des
 
 There are different types of shots in an NBA game. The dunk, the layup, paint shots, the free throw, the three point shot, and the focus of this report: the mid-range. In the early years of the modern NBA (80s-90s), the three point shot was more or less a privilege and an advantage for the undersized guard. Offenses at that time were largely based on physicality and paint-presence. Not many three point shots were taken and were treated as fall back options. Interestingly, if one were to turn on an NBA game now, that is not the case. Even the NBA's big men have developed a competitve jump shot to add an extra dynamicism to their offensive capabilities. Players like Nikola Jokić, Karl-Anthony Towns, Brook Lopez, Joel Embiid, and many other counterparts are prime examples of this evolution. In fact, in the 2022 three point contest, it was the big man Karl-Anthony Towns that won the infamous shooting contest! Towns was only the third big man to do so, behind very famous players like Dirk Nowitzki and Kevin Love. [^1]
 
-[^1]: https://sports.yahoo.com/minnesota-timberwolves-center-karl-anthony-towns-wins-nba-all-star-3-point-contest-025319348.html#:~:text=Towns%20won%20the%20event%20with,Nowitzki%20to%20claim%20that%20title.&text=Towns%20had%20a%20very%20clear,Neal%20after%20the%20win%2C%20too.
+[^1]: https://sports.yahoo.com/minnesota-timberwolves-center-karl-anthony-towns-wins-nba-all-star-3-point-contest-025319348.html
 
 The three point shot has become so commonplace that it is hard to find plays that use the mid-range. If the league's big men have credible three-point shots, defenses get spread out in the half-court as now every offensive player can get a three over a two. A spread out defense also leaves gaping holes that, when properly accounted for by the offense, allows guards to simply drive the ball to the paint for a layup, or dunk, or a chance at the free-throw line. Thus, it is worth investigating the presence (or lackthereof, potentially) of the mid-range and its relations to the three point shot. 
 
