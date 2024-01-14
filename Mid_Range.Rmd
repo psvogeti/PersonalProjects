@@ -56,13 +56,12 @@ The data set we will use will contain a whole season's log of play-by-play data.
     -   `locY` the y-coordinate location of the `de` play
     -   `hs` the home team total points at the `cl` moment
     -   `vs` the visiting team total points at the `cl` moment
-    -   `pts` the pts scored by the respective `hs` or `vs` at the `cl` moment
     -   `PERIOD` the quarter of the game so as to distinct `cl`
     -   `GAME_ID` the numerical identifier of the game being played
 
 ### Assumptions and Unusuality
 
-A giant aspect of this report relies on the location data: `locX` and `locY`. The way we define the type of shot performed agrees with the NBA standard. However, there are certainly edge cases where we classify a shot differently when compared to the actual scorekeeper's book. Such edge cases are rare, but can and will happen during this excursion. An example of this case can be found in Game 6 of the 2021 NBA Eastern Conference Finals, when the Bucks played the Nets. In that game, Kevin Durant took a shot that had merits to be a three, but was ruled as a two because of his shoe being on the three point line. We will interpret all shots that show on the lmarking lines as a two. 
+A giant aspect of this report relies on the location data: `locX` and `locY`. The way we define the type of shot performed agrees with the NBA standard. However, there are certainly edge cases where we classify a shot differently when compared to the actual scorekeeper's book. Such edge cases are rare, but can and will happen during this excursion. An example of this case can be found in Game 6 of the 2021 NBA Eastern Conference Finals, when the Bucks played the Nets. In that game, Kevin Durant took a shot that had merits to be a three, but was ruled as a two because of his shoe being on the three point line. We will interpret all shots that show on the marking lines as a two, even if some of them were ruled as a three. 
 
 Another aspect of this report is that we are not necessarily evaluating the player's position. This is more of a holistic look at the shot architecture rather than a case-by-case shot outlook. So, a shot taken at the three point line by a Center will be treated the exact same as that shot taken by a Point Guard. We are just interested in looking at a broad look at shot behavior without delving too much into particulars. 
 
@@ -91,15 +90,90 @@ head(raw_pbp_2022_data, n=15)
 
 ```
 
+Now, we will create our cleaned data sets. Since we are dealing with the same type of data, it makes sense to create a function called `get_shots_data()` that will do this for us. 
+
+```{r clean-data}
+##the last name of the player, since that is what is in the pbp data
+player_regex = "\\]\\s\\w+"
+##to capture all "shot" from the play description
+shot_literal_regex = "shot"
+##to capture the team code
+team_regex = "\\[[A-Z]{3}"
+
+
+get_shots_data <- function(raw_pbp_data) {
+
+  ##get the variables we use
+  pbp_data <- raw_pbp_data %>% select(
+    GAME_ID, PERIOD, cl, de, locX, locY, hs, vs
+  )
+  
+  ##get the shot data
+  shots_data <- pbp_data %>% 
+    filter(str_detect(de, shot_literal_regex)) %>%
+    group_by(GAME_ID) %>%
+    ## responsible for getting the teams involved in this game
+    mutate(
+      team = str_extract(de, regex(team_regex, FALSE)),
+      player_team = substring(team, 2, 5), 
+    ) %>%
+    ##responsible for getting the player shooting the shot
+    mutate(
+      player_identifier = str_extract(de, regex(player_regex, TRUE)), 
+      player_shooting = substring(player_identifier, 3, last = 1000000L)
+    ) %>% 
+    ##responsible for classifying certain stage of the game in period.int format
+    mutate(
+      interval = case_when(
+        cl <= "01:00" ~ 0.5,
+        cl <= "03:00" ~ 0.4, 
+        cl <= "06:00" ~ 0.3, 
+        cl <= "09:00" ~ 0.2,
+        cl <= "12:00" ~ 0.1), 
+      stage_of_game = PERIOD + interval 
+    ) %>% 
+    ##QoL change
+    rename(gm_quarter = PERIOD) %>%
+    select(GAME_ID, gm_quarter, stage_of_game, de, hs, vs, player_shooting, player_team, locX, locY)
+  
+  return (shots_data)
+}
+```
+
+Now we use `get_shots_data()` to get our cleaner shot data for each data set. Note, we are not done cleaning after this, but it is a nice intermediate step to have so that we can avoid running our ` r load_data` chunk. 
+
+```{r}
+##get the shots taken for the 2021-2022 NBA season
+shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data)
+
+##get the shots taken for the 2020-2021 NBA season
+shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data)
+
+##get the shots taken for the 2019-2020 NBA season
+shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data)
+
+##get the shots taken for the 2018-2019 NBA season
+shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data)
+
+##get the shots taken for the 2017-2018 NBA season
+shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data)
+
+##get the shots taken for the 2016-2017 NBA season
+shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data)
+
+##get the shots taken for the 2015-2016 NBA season
+shots_2016 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data)
+
+##print out a sample of what these data frames look like
+head(shots_2017, n=10)
+```
 
 
 
-Now we will clean each dataset to get the relevant variables
-### Data Summaries
 
 In this section we will display relevant summary statistics to get a sense of the data we are dealing with. 
 
-[Placeholder]
+
 
 ### Analysis 1: 
 
