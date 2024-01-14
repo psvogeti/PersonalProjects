@@ -74,7 +74,9 @@ The rest of this report will focus on cleaning the data to fit our needs, and an
 
 ### Data Cleanup
 
-First we load in the data
+#### Getting the Shots
+
+First we load in the data. 
 ```{r load-data}
 # read the play by play data. this is an expensive chunk to load so run sparingly
 raw_pbp_2016_data <- read.csv("../data/datanba_2016.csv")
@@ -92,7 +94,7 @@ head(raw_pbp_2022_data, n=15)
 
 Now, we will create our cleaned data sets. Since we are dealing with the same type of data, it makes sense to create a function called `get_shots_data()` that will do this for us. 
 
-```{r clean-data}
+```{r get-shot-data-function}
 ##the last name of the player, since that is what is in the pbp data
 player_regex = "\\]\\s\\w+"
 ##to capture all "shot" from the play description
@@ -142,36 +144,46 @@ get_shots_data <- function(raw_pbp_data) {
 
 Now we use `get_shots_data()` to get our cleaner shot data for each data set. Note, we are not done cleaning after this, but it is a nice intermediate step to have so that we can avoid running our ` r load_data` chunk. 
 
-```{r}
+```{r get-shots-data}
 ##get the shots taken for the 2021-2022 NBA season
-shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data)
+inter_shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data)
 
 ##get the shots taken for the 2020-2021 NBA season
-shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data)
+inter_shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data)
 
 ##get the shots taken for the 2019-2020 NBA season
-shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data)
+inter_shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data)
 
 ##get the shots taken for the 2018-2019 NBA season
-shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data)
+inter_shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data)
 
 ##get the shots taken for the 2017-2018 NBA season
-shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data)
+inter_shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data)
 
 ##get the shots taken for the 2016-2017 NBA season
-shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data)
+inter_shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data)
 
 ##get the shots taken for the 2015-2016 NBA season
-shots_2016 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data)
+inter_shots_2016 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data)
 
 ##print out a sample of what these data frames look like
-head(shots_2017, n=10)
+head(inter_shots_2017, n=10)
 ```
 
 
+#### Translating Location to Shots
 
 
-In this section we will display relevant summary statistics to get a sense of the data we are dealing with. 
+Now that we have all of our shots, it's time to classify each shot. Before we do, we need to understand what `locX` and `locY` are all about. 
+
+
+`locX` and `locY` are the standard media coordinates used by the NBA teams to locate where a player is with reference to the basketball court. 
+
+For reference, let $x$ represent `locX` and $y$ represent `locY` such that a player's position $P$ on the court at any given moment is $P = (x, y)$. The origin of this system is the site of the jumpball, the immediate center. For now, we define the origin as $O$. We will give specific numerical coordinates to $x$ and $y$ at $O$ when we investigate our translation work. 
+
+Additionally, let $x_r$ represent the traditional x coordinate in the Cartesian plane that `R` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the Cartesian plane that `R` uses for its graphs. Then, with respect to any traditional graph that `R` uses, we define a position $P_r$ as the generalized location of any point on these collection of graphs that `R` uses such that $P_r = (x_r, y_r)$. Naturally, this means $P_r$ has origin $O_r = (0, 0)$
+
+Our task is to then translate $O$ to $O_r$ to make `loc_X` and `loc_Y` plot-friendly in `R`. Once we do so, we can then classify shots using this translated plane as our reference geometry. 
 
 
 
