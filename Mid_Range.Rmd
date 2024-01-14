@@ -41,11 +41,11 @@ The three point shot has become so commonplace that it is hard to find plays tha
 
 ### About the Original Data: Play-by-Play
 
-The author that has provided the data for us to use is Vladislav Shufinsky. He has compiled NBA play-by-play data from 1996-2022 and made it open-source on Kaggle to allow us to use it for excursions like this[^1].
+The author that has provided the data for us to use is Vladislav Shufinsky. He has compiled NBA play-by-play data from 1996-2022 and made it open-source on Kaggle to allow us to use it for excursions like this[^2].
 
-[^1]: <https://www.kaggle.com/datasets/brains14482/nba-playbyplay-and-shotdetails-data-19962021/data>
+[^2]: <https://www.kaggle.com/datasets/brains14482/nba-playbyplay-and-shotdetails-data-19962021/data>
 
-The data set we will use will contain a whole season's log of play-by-play data from the 2021-2022 NBA season. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the files called "*datanba_YYYY.csv*" where YYYY is the season of choice. 
+The data set we will use will contain a whole season's log of play-by-play data. In order to see changes over time, we will use the collection available from this data set. This collection spans from the 2015-2016 NBA season to the 2021-2022 NBA season inclusive. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the files called "*datanba_YYYY.csv*" where YYYY is the season of choice. So, the 2015-2016 season uses the "*datanba_2016.csv*
 
 ### The Key Variables
 
@@ -75,8 +75,26 @@ The rest of this report will focus on cleaning the data to fit our needs, and an
 
 ### Data Cleanup
 
-Here we will cleanup our data to fit our analysis needs. 
+First we load in the data
+```{r load-data}
+# read the play by play data. this is an expensive chunk to load so run sparingly
+raw_pbp_2016_data <- read.csv("../data/datanba_2016.csv")
+raw_pbp_2017_data <- read.csv("../data/datanba_2017.csv")
+raw_pbp_2018_data <- read.csv("../data/datanba_2018.csv")
+raw_pbp_2019_data <- read.csv("../data/datanba_2019.csv")
+raw_pbp_2020_data <- read.csv("../data/datanba_2020.csv")
+raw_pbp_2021_data <- read.csv("../data/datanba_2021.csv")
+raw_pbp_2022_data <- read.csv("../data/datanba_2022.csv")
 
+##print the first 15 rows of a sample of this raw data
+head(raw_pbp_2022_data, n=15)
+
+```
+
+
+
+
+Now we will clean each dataset to get the relevant variables
 ### Data Summaries
 
 In this section we will display relevant summary statistics to get a sense of the data we are dealing with. 
