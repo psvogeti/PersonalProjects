@@ -72,12 +72,12 @@ The rest of this report will focus on cleaning the data to fit our needs, and an
 
 # Analysis
 
-### Data Cleanup
+## Data Cleanup
 
-#### Getting the Shots
+### Getting the Shots
 
 First we load in the data. 
-```{r load-data}
+```{r load-data , echo=T}
 # read the play by play data. this is an expensive chunk to load so run sparingly
 raw_pbp_2016_data <- read.csv("../data/datanba_2016.csv")
 raw_pbp_2017_data <- read.csv("../data/datanba_2017.csv")
@@ -89,21 +89,25 @@ raw_pbp_2022_data <- read.csv("../data/datanba_2022.csv")
 
 ##print the first 15 rows of a sample of this raw data
 head(raw_pbp_2022_data, n=15)
-
 ```
 
 Now, we will create our cleaned data sets. Since we are dealing with the same type of data, it makes sense to create a function called `get_shots_data()` that will do this for us. 
 
-```{r get-shot-data-function}
+```{r get-shot-data-function, echo=T}
 ##the last name of the player, since that is what is in the pbp data
 player_regex = "\\]\\s\\w+"
 ##to capture all "shot" from the play description
-shot_literal_regex = "shot"
+shot_literal = "shot"
+##to capture all "3pt" shots from the play description
+three_shot_literal = "3pt"
 ##to capture the team code
 team_regex = "\\[[A-Z]{3}"
+##to capture all "made" shots from the play description
+made_literal = "Made"
+##to capture all "missed" shots from the play description
+missed_literal = "Missed"
 
-
-get_shots_data <- function(raw_pbp_data) {
+get_shots_data <- function(raw_pbp_data, reg_season) {
 
   ##get the variables we use
   pbp_data <- raw_pbp_data %>% select(
@@ -112,7 +116,7 @@ get_shots_data <- function(raw_pbp_data) {
   
   ##get the shot data
   shots_data <- pbp_data %>% 
-    filter(str_detect(de, shot_literal_regex)) %>%
+    filter(str_detect(de, pattern=shot_literal) | str_detect(de, pattern=three_shot_literal)) %>%
     group_by(GAME_ID) %>%
     ## responsible for getting the teams involved in this game
     mutate(
@@ -134,9 +138,17 @@ get_shots_data <- function(raw_pbp_data) {
         cl <= "12:00" ~ 0.1), 
       stage_of_game = PERIOD + interval 
     ) %>% 
+    mutate(
+      shot_result = case_when(
+        str_detect(string=de, pattern=made_literal) ~ "Made",
+        str_detect(string=de, pattern=missed_literal) ~ "Missed"
+      )
+    ) %>%
     ##QoL change
     rename(gm_quarter = PERIOD) %>%
-    select(GAME_ID, gm_quarter, stage_of_game, de, hs, vs, player_shooting, player_team, locX, locY)
+    ##add the season classifier
+    mutate(season = reg_season) %>% ungroup() %>%
+    select(season, gm_quarter, stage_of_game, de, player_shooting, player_team, shot_result, locX, locY)
   
   return (shots_data)
 }
@@ -144,46 +156,206 @@ get_shots_data <- function(raw_pbp_data) {
 
 Now we use `get_shots_data()` to get our cleaner shot data for each data set. Note, we are not done cleaning after this, but it is a nice intermediate step to have so that we can avoid running our ` r load_data` chunk. 
 
-```{r get-shots-data}
+```{r get-shots-data, echo=T}
 ##get the shots taken for the 2021-2022 NBA season
-inter_shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data)
+inter_shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data, "2021-2022")
 
 ##get the shots taken for the 2020-2021 NBA season
-inter_shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data)
+inter_shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data, "2020-2021")
 
 ##get the shots taken for the 2019-2020 NBA season
-inter_shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data)
+inter_shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data, "2019-2020")
 
 ##get the shots taken for the 2018-2019 NBA season
-inter_shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data)
+inter_shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data, "2018-2019")
 
 ##get the shots taken for the 2017-2018 NBA season
-inter_shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data)
+inter_shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data, "2017-2018")
 
 ##get the shots taken for the 2016-2017 NBA season
-inter_shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data)
+inter_shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data, "2016-2017")
 
 ##get the shots taken for the 2015-2016 NBA season
-inter_shots_2016 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data)
+inter_shots_2016 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data, "2015-2016")
 
 ##print out a sample of what these data frames look like
 head(inter_shots_2017, n=10)
 ```
 
+```{r combine-shot-data, echo=T}
+all_shots_data <- rbind(inter_shots_2016, inter_shots_2017, inter_shots_2018, inter_shots_2019, inter_shots_2020, inter_shots_2021, inter_shots_2022)
+```
 
-#### Translating Location to Shots
 
+### Understanding Location Data: $N$
 
 Now that we have all of our shots, it's time to classify each shot. Before we do, we need to understand what `locX` and `locY` are all about. 
 
+`locX` and `locY` are the standard media coordinates used by the NBA teams to locate where a player is with reference to the basketball court. The caveat to this system is that these coordinates represent an NBA-regulation half-court plane. 
 
-`locX` and `locY` are the standard media coordinates used by the NBA teams to locate where a player is with reference to the basketball court. 
+For reference, let $x$ represent `locX` and $y$ represent `locY` such that a player's position $p$ on the half-court at any given moment is $p = (x, y)$. The origin of this system is directly underneath the basket. We define this origin as $o$ with $o = (0, 0)$. 
 
-For reference, let $x$ represent `locX` and $y$ represent `locY` such that a player's position $P$ on the court at any given moment is $P = (x, y)$. The origin of this system is the site of the jumpball, the immediate center. For now, we define the origin as $O$. We will give specific numerical coordinates to $x$ and $y$ at $O$ when we investigate our translation work. 
+Let's visualize this through some plotting. We do this in a rather fun way: we will create a function called `graph_player_shots()` that will take in a `player` and a `reg_season` and plot all shots with respect to those parameters. 
 
-Additionally, let $x_r$ represent the traditional x coordinate in the Cartesian plane that `R` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the Cartesian plane that `R` uses for its graphs. Then, with respect to any traditional graph that `R` uses, we define a position $P_r$ as the generalized location of any point on these collection of graphs that `R` uses such that $P_r = (x_r, y_r)$. Naturally, this means $P_r$ has origin $O_r = (0, 0)$
+```{r plotting-on-N, echo=T}
+graph_player_shots <- function(player_name, reg_season) {
+  
+  ##get the shot data of the player and the season
+  player_shots_data <- all_shots_data %>% 
+    filter((player_shooting == player_name) & (season == reg_season))
+  
+  ##generate a plot of this shot data
+  player_shot_plot <- ggplot(data = player_shots_data, aes(x=locX, y=locY, color=shot_result)) +
+    geom_point(size = 2, alpha = 0.75)  + 
+    xlab("X-Coordinate Location") + 
+    ylab("Y-Coordinate Location") +
+    ggtitle(paste(player_name, "'s Shot Location Data"), 
+            subtitle = paste(reg_season, "NBA Regular Season")) +
+    theme_dark()
+  
+  ##return this plot
+  return (player_shot_plot)
+}
 
-Our task is to then translate $O$ to $O_r$ to make `loc_X` and `loc_Y` plot-friendly in `R`. Once we do so, we can then classify shots using this translated plane as our reference geometry. 
+
+##graph Lowry's shots in the 2016-2017 NBA regular season
+graph_player_shots(player_name = "Lowry", reg_season = "2016-2017")
+
+##graph Brunson's shots in the 2020-2021 nba regular season
+graph_player_shots(player_name = "Brunson", reg_season = "2020-2021")
+
+##graph Lillard's shots in the 2021-2022 nba regular season
+graph_player_shots(player_name = "Lillard", reg_season = "2021-2022")
+
+```
+
+Through the above plots, we can see not only every specific shot each player took, but also colored based on whether they made it or not. However, one noticeable problem is standardization. Following our convention, all of these are examples of $p$ on $N$, However, the $x$ and $y$ (recall, $p = (x, y)$) scales are not the same. This something we have to fix, by using a package called `sportyR`. Using this package, we can standardize our $p$ to `sportyR`'s coordinate-system making it easy to classify our shots.  
+
+Before we leave this section, let's visualize the numeric bounds of $N$
+
+```{r defining-N, echo=T}
+##boundaries of locX and locY which defines N
+maxX_N = max(all_shots_data$locX)
+minX_N = min(all_shots_data$locX)
+maxY_N = max(all_shots_data$locY)
+minY_N = min(all_shots_data$locY) 
+
+originX_N = 0
+originY_N = 0
+
+##coordinate labels
+left_top_N_text = paste("(",minX_N, ",", maxY_N, ")")
+right_top_N_text = paste("(", maxX_N, ",", maxY_N, ")")
+left_bottom_N_text = paste("(", minX_N, ",", minY_N, ")")
+right_bottom_N_text = paste("(", maxX_N, ",", minY_N, ")")
+origin_N_text = paste("(", originX_N, ",", originY_N, ")")
+
+## plot our boundaries
+ggplot() + 
+  geom_point(aes(x=maxX_N,y=maxY_N), colour = "red", size = 4) + 
+  geom_point(aes(x=maxX_N,y=minY_N), colour = "red", size = 4) +
+  geom_point(aes(x=minX_N,y=maxY_N), colour = "red", size = 4) +
+  geom_point(aes(x=minX_N,y=minY_N), colour = "red", size = 4) +
+  geom_point(aes(x= originX_N, y=originY_N), colour = "blue", size = 4) +
+  theme_dark()
+```
+
+The red points signify these boundary markers: 
+
+  * Our top left green point has coordinates: `r left_top_N_text[1]`
+  * Our top right green point has coordinates: `r right_top_N_text[1]`
+  * Our bottom left green point has coordinates: `r left_bottom_N_text[1]`
+  * Our bottom right green point has coordinates: `r right_bottom_N_text[1]`
+
+From this chunk we know the following: 
+For `locX` ($x$) and `locY` ($y$), with respect to a player's position $p = (x, y)$ on the basketball court plane $N$, we define $N$ as follows: 
+
+$$
+N = \{p = (x,y) \mid x \in [`r minX_N[1]`, `r maxX_N[1]`], y \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+$$
+
+This can be read as: 
+
+> The court system that the NBA uses for shot-plotting (call it $N$), is simply the whole collection of all possible player positions $p$ where $p$ is simply a point on $N$ defined by the player's x-coordinate on $N$ (called $x$) and the player's y-coordinate on $N$ (called $y$) to give us $p = (x, y)$. The interval $x \in [`r minX_N[1]`, `r maxX_N[1]`]$ defines all possiblilities that $x$ can be on this court $N$. Similarly, the interval $y \in [`r maxY_N[1]`, `r maxY_N[1]`]$ defines all possiblilities that $y$ can be on this court $N$.
+
+
+
+### Understanding Location Data: $R$
+
+
+As we did for our location data, we defined a coordinate system that we called $N$. Now, let's define a coordinate system for `sportyR`
+
+Additionally, let $x_r$ represent the traditional x coordinate in the basketball court plane that `sportyR` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the basketball court plane that `R` uses for its graphs. Then, with respect to any traditional basketball court that `sportyR` uses, we define a position $p_r$ as the generalized location of any point on these basketball courts that `sportyR` uses such that $p_r = (x_r, y_r)$. Naturally, this means $p_r$ has origin $o_r = (0, 0)$ which is the immediate center of the court, the site of the tip-off. 
+
+Let's visualize $R$
+```{r basketball-court-visualization, echo=T}
+##generate an NBA regulation basketball plot
+basketball_plot <- geom_basketball(league = "NBA") 
+
+basketball_plot
+```
+
+Let's go ahead and identify our boundaries. Since we know all of our shots must be inside the court perimeter, it makes sense to exclude the out-of-bounds region when defining our boundaries. We also know that an NBA court has regulation dimensions: 94 ft X 50 ft. 
+```{r court-boundaries-visualization, echo=T}
+##boundary constants
+LEFT_LINE = -47
+RIGHT_LINE = 47
+TOP_LINE = 25
+BOTTOM_LINE = -25
+ORIGIN_X = 0
+ORIGIN_Y = 0
+
+##coordinate labels
+left_top_coord_text = paste("(", LEFT_LINE, ",", TOP_LINE, ")")
+right_top_coord_text = paste("(", RIGHT_LINE, ",", TOP_LINE, ")")
+left_bottom_coord_text = paste("(", LEFT_LINE, ",", BOTTOM_LINE, ")")
+right_bottom_coord_text = paste("(", RIGHT_LINE, ",", BOTTOM_LINE, ")")
+origin_coord_text = paste("(", ORIGIN_X, ",", ORIGIN_Y, ")")
+
+##plot the boundaries
+court_boundaries <- basketball_plot +
+  geom_hline(yintercept = TOP_LINE, color = "navyblue", linewidth = 2) +
+  geom_hline(yintercept = BOTTOM_LINE, color = "steelblue", linewidth = 2) +
+  geom_vline(xintercept = LEFT_LINE, color = "maroon", linewidth = 2) +
+  geom_vline(xintercept = RIGHT_LINE, color = "red", linewidth = 2) + 
+  geom_point(aes(x=LEFT_LINE, y=TOP_LINE), colour="limegreen", size = 4) + 
+  geom_point(aes(x=RIGHT_LINE, y=TOP_LINE), colour="limegreen", size = 4) +
+  geom_point(aes(x=LEFT_LINE, y=BOTTOM_LINE), colour="limegreen", size = 4) +
+  geom_point(aes(x=RIGHT_LINE, y=BOTTOM_LINE), colour="limegreen", size = 4) +
+  geom_point(aes(x=ORIGIN_X, y = ORIGIN_Y), colour = "black", size = 4)
+  
+
+## visualize the boundaries
+court_boundaries
+```
+
+Let's quickly discuss what we see. 
+The navy blue line is our top border with $y = `r TOP_LINE[1]`$.
+The steel blue line is our bottom border with $y = `r BOTTOM_LINE[1]`$. 
+The maroon line is our left border with $x = `r LEFT_LINE[1]`$. 
+The red line is our right border with $x = `r RIGHT_LINE[1]`$. 
+
+The green points signify these line intersections: 
+
+  * Our top left green point has coordinates: `r left_top_coord_text[1]`
+  * Our top right green point has coordinates: `r right_top_coord_text[1]`
+  * Our bottom left green point has coordinates: `r left_bottom_coord_text[1]`
+  * Our bottom right green point has coordinates: `r right_bottom_coord_text[1]`
+  
+The black point is our origin $o_r$ with coordinates: `r origin_coord_text[1]`
+
+We can now define $R$ more rigorously. For any position $p_r$ that is in $R$, we have that: 
+
+$$
+R = \{p_r = (x_r,y_r) \mid 
+      x_r \in [`r LEFT_LINE[1]`, `r RIGHT_LINE[1]`], y_r \in [`r BOTTOM_LINE[1]`, `r TOP_LINE[1]`]
+\}
+$$
+This can be read as: 
+
+> The court system that `sportyR` uses for shot-plotting (call it $R$), is simply the whole collection of all possible player positions $p_r$ where $p_r$ is simply a point on $R$ defined by the player's x-coordinate on $R$ (called $x_r$) and the player's y-coordinate on $R$ (called $y_r$) to give us $p_r = (x_r, y_r)$. The interval 
+$x_r \in [`r LEFT_LINE[1]`, `r RIGHT_LINE[1]`]$ defines all possiblilities that $x_r$ can be on this court $R$. Similarly, the interval $y_r \in [`r BOTTOM_LINE[1]`, `r TOP_LINE[1]`]$ defines all possiblilities that $y_r$ can be on this court $R$.
+
 
 
 
