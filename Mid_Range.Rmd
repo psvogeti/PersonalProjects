@@ -232,14 +232,14 @@ graph_player_shots(player_name = "Lillard", reg_season = "2021-2022")
 
 Through the above plots, we can see not only every specific shot each player took, but also colored based on whether they made it or not. However, one noticeable problem is standardization. Following our convention, all of these are examples of $p_n$ on $N$, However, the $x_n$ and $y_n$ (recall, $p_n= (x_n, y_n)$) scales are not the same. This something we have to fix, by using a package called `sportyR`. Using this package, we can standardize our $p_n$ to `sportyR`'s coordinate-system making it easy to classify our shots.  
 
-Before we leave this section, let's visualize the numeric bounds of $N$
+Before we leave this section, let's visualize the numeric bounds of $N$. We will do this by picking one season, the 2021-2022 regular season, and examining what the shot spread looks like. 
 
 ```{r defining-N, echo=T}
 ##boundaries of locX and locY which defines N
-maxX_N = max(all_shots_data$locX)
-minX_N = min(all_shots_data$locX)
-maxY_N = max(all_shots_data$locY)
-minY_N = min(all_shots_data$locY) 
+maxX_N = max(inter_shots_2022$locX)
+minX_N = min(inter_shots_2022$locX)
+maxY_N = max(inter_shots_2022$locY)
+minY_N = min(inter_shots_2022$locY)
 
 originX.N = 0
 originY.N = 0
@@ -257,28 +257,64 @@ ggplot() +
   geom_point(aes(x=maxX_N,y=minY_N), colour = "red", size = 4) +
   geom_point(aes(x=minX_N,y=maxY_N), colour = "red", size = 4) +
   geom_point(aes(x=minX_N,y=minY_N), colour = "red", size = 4) +
+  geom_point(data = inter_shots_2022, aes(x=locX, y=locY),  colour = "green", size = .8, alpha = .5) +
   geom_point(aes(x= originX.N, y=originY.N), colour = "blue", size = 4) +
+  xlab("X-Coordinate Range") +
+  ylab("Y-Coordinate Range") +
+  ggtitle("Defining the NBA Location Data Coordinate System", subtitle = "2021-2022 NBA Regular Season") +
   theme_dark()
 ```
 
 The points signify these boundary markers: 
 
-  * Our top left red point has coordinates: `r left_top_N_text[1]`
-  * Our top right red point has coordinates: `r right_top_N_text[1]`
-  * Our bottom left red point has coordinates: `r left_bottom_N_text[1]`
-  * Our bottom right red point has coordinates: `r right_bottom_N_text[1]`
+  * Our top left red point has coordinates: `r left_top_N_text[1]` and is the most extreme shot taken in this quadrant
+  * Our top right red point has coordinates: `r right_top_N_text[1]` and is the most extreme shot taken in this quadrant
+  * Our bottom left red point has coordinates: `r left_bottom_N_text[1]` and is the most extreme shot taken in this quadrant
+  * Our bottom right red point has coordinates: `r right_bottom_N_text[1]` and is the most extreme shot taken in this quadrant
   * The blue point signifies our origin $o_n$ with coordinates: `r origin_N_text[1]`
+  
+  
+To define N, we need to do some math. 
+
+We know that the standard NBA court has dimensions (width by length) $94\text{ft X } 50\text{ft}$
+Therefore, the coordinates have to be some scaled version of these dimensions to retain the mapping properties of the shots.
+
+So, to know what that numerical proportion is, we need to take the range of our plotted length and divide it by the standard length ($50\text{ ft}$). We can then apply this proportion to find our plotted width. 
+
+```{r N-dimensions, echo=TRUE}
+## dimensions of a standard court
+STANDARD_CT_LENGTH = 50
+STANDARD_CT_WIDTH = 94
+
+## the length of N
+LENGTH.N = abs(maxX_N - minX_N)
+
+## find the proportion at which the standard court was scaled
+prop_scaled = LENGTH.N / STANDARD_CT_LENGTH
+
+## use this proportion to get our width  
+WIDTH.N = STANDARD_CT_WIDTH * prop_scaled
+
+## intervals of x_n and y_n
+LOW_N.X = minX_N
+HIGH_N.X = LOW_N.X + LENGTH.N
+LOW_N.Y = minY_N
+HIGH_N.Y = minY_N + WIDTH.N
+```
+  
+  
+
 
 From this chunk we know the following: 
 For `locX` ($x_n$) and `locY` ($y_n$), with respect to a player's position $p_n = (x_n, y_n)$ on the basketball court plane $N$, we define $N$ as follows: 
 
 $$
-N = \{p_n = (x_n,y_n) \mid x_n \in [`r minX_N[1]`, `r maxX_N[1]`], y_n \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+N = \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
 $$
 
 This can be read as: 
 
-> The court system that the NBA uses for shot-plotting (call it $N$), is simply the whole collection of all possible player positions $p_n$ where $p_n$ is simply a point on $N$ defined by the player's x-coordinate on $N$ (called $x_n$) and the player's y-coordinate on $N$ (called $y_n$) to give us $p_n = (x_n, y_n)$. The interval $x_n \in [`r minX_N[1]`, `r maxX_N[1]`]$ defines all possiblilities that $x_n$ can be on this court $N$. Similarly, the interval $y_n \in [`r maxY_N[1]`, `r maxY_N[1]`]$ defines all possiblilities that $y_n$ can be on this court $N$.
+> The court system that the NBA uses for shot-plotting (call it $N$), is simply the whole collection of all possible player positions $p_n$ where $p_n$ is simply a point on $N$ defined by the player's x-coordinate on $N$ (called $x_n$) and the player's y-coordinate on $N$ (called $y_n$) to give us $p_n = (x_n, y_n)$. The interval $x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`]$ defines all possiblilities that $x_n$ can be on this court $N$. Similarly, the interval $y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]$ defines all possiblilities that $y_n$ can be on this court $N$.
 
 
 ### Understanding Location Data: $R$
@@ -373,7 +409,7 @@ Now, we have established two coordinate systems:
 $N$, which is the coordinate system that our data inherently uses, is defined as: 
 
 $$
-N = \{p_n = (x_n,y_n) \mid x_n \in [`r minX_N[1]`, `r maxX_N[1]`], y_n \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+N = \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
 $$
 
 $R$, which is the coordinate system that `sportyR` uses, is defined as: 
@@ -417,6 +453,7 @@ shifted_origin_text = paste("(", shift_x, ",", shift_y, ")")
 half_court_boundaries +
   geom_point(aes(x=shift_x, y=shift_y), colour="yellow", size = 4) 
 ```
+
 The above tells us the following about visualizating $o_n$ on $R$: 
 
 > Keeping $y_r \in o_r$ the same ($y_r = 0$), if we move $o_r$ right by 42 $x_r$ units, we can find the origin equivalent of $o_n$ on this system $R$.
@@ -438,6 +475,7 @@ new_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[1], rotati
 
 new_court + geom_point(aes(x = originX, y=originY), color = "yellow", size = 4)
 ```
+
 This has our origin $o$ in yellow with coordinates `origin_coord_text[1]` that agrees with $o_n$ convention. Now, let's redefine $R$. In doing so, we can scale this new $R$ to agree with $N$ and therefore the resulting coordinate system is our final coordinate system $C$. 
 
 
@@ -445,7 +483,7 @@ This has our origin $o$ in yellow with coordinates `origin_coord_text[1]` that a
 ##boundary constants
 LEFT_X = -25
 RIGHT_X = 25
-TOP_Y = 42
+TOP_Y = 89
 BOTTOM_Y = -5
 
 ##coordinate labels
@@ -484,6 +522,13 @@ The green points signify these line intersections:
   
 The black point is our origin $o_r$ with coordinates: `r origin_text[1]`
 
+```{r R-dimensions}
+## dimensions of R
+LENGTH.R = abs(RIGHT_X - LEFT_X)
+WIDTH.R = abs(TOP_Y - BOTTOM_Y)
+```
+
+
 Mathematically, $R$ has been redefined this way: 
 
 $$
@@ -508,7 +553,7 @@ Now, let's recap our coordinate systems:
 $N$, which is the coordinate system that our data inherently uses, is defined as: 
 
 $$
-N = \{p_n = (x_n,y_n) \mid x_n \in [`r minX_N[1]`, `r maxX_N[1]`], y_n \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+N = \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
 $$
 
 $R$, which is the coordinate system that `sportyR` uses, has been **NEWLY** redefined as: 
@@ -525,26 +570,26 @@ $K = \frac{R}{N}$. In this way, we can use our `locX` ($x_n$) and `locY` ($y_n$)
 For $(x_n, y_n) = p_n \in N$  
 
 Coordinate system $C$ is the result of shrinking $N$'s bounds to agree with $R$'s bounds through 
-scalar $K = \{K_x, K_y\}$
+scalar $K = \{k_x, k_y\}$
 
 $$
-C = \{p = (x, y) \mid x = \frac{x_n}{K_x}, y = \frac{y_n}{K_y}\}
+C = \{p = (x, y) \mid x = \frac{x_n}{k_x}, y = \frac{y_n}{k_y}\}
 $$
-For $K_x, K_y \in K$
+For $k_x, k_y \in K$
 
 
 Let's now implement $K$!
 
 ```{r scalar-K, echo=T}
-LENGTH.N = abs(maxX_N - minX_N)
-WIDTH.N = abs(maxY_N - minY_N)
-
-LENGTH.R = abs(RIGHT_X - LEFT_X)
-WIDTH.R = abs(TOP_Y - BOTTOM_Y)
-
+## K = dim(R)/dim(N)
 K.x = LENGTH.R/LENGTH.N
 K.y = WIDTH.R/WIDTH.N
 
+EMPIRIC_TRANSLATION = .1
+
+## Translate our N coordinate system to the R coordinate system by K
+## This gives us a new set of coordinates that we call C (our final system)
+## P_n * (K = {R/N}) = P_r --> P_c
 all_shots_data <- all_shots_data %>%
   mutate(c.x = locX * K.x, 
          c.y = locY * K.y)
@@ -571,7 +616,7 @@ This can be read as:
 $x \in [`r minX_C[1]`, `r maxX_C[1]`]$ defines all possiblilities that $x$ can be on this court $C$. Similarly, the interval $y \in [`r minY_C[1]`, `r maxY_C[1]`]$ defines all possiblilities that $y$ can be on this court $C$.
 
 ```{r final-court, echo=T}
-final_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[3], rotation=DEG_ROTATE,
+final_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[2], rotation=DEG_ROTATE,
                              x_trans = shift_y)
 ```
 
@@ -596,6 +641,7 @@ graph_standardized_shots <- function(player_name, reg_season) {
   player_shot_plot <- final_court +
     geom_point(data = player_shots_data, aes(x=c.x, y=c.y, color=shot_result)) +
     geom_point(size = 1, alpha = 0.75)  + 
+    scale_color_manual(aesthetics = "color", values=c("darkolivegreen","firebrick4"), labels = c("Made","Missed")) +
     xlab("X-Coordinate Location") + 
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
