@@ -193,7 +193,7 @@ Now that we have all of our shots, it's time to classify each shot. Before we do
 
 `locX` and `locY` are the standard media coordinates used by the NBA teams to locate where a player is with reference to the basketball court. The caveat to this system is that these coordinates represent an NBA-regulation half-court plane. 
 
-For reference, let $x$ represent `locX` and $y$ represent `locY` such that a player's position $p$ on the half-court at any given moment is $p = (x, y)$. The origin of this system is directly underneath the basket. We define this origin as $o$ with $o = (0, 0)$. 
+For reference, let $x_n$ represent `locX` and $y_n$ represent `locY` such that a player's position $p_n$ on the half-court at any given moment is $p_n = (x_n, y_n)$. The origin of this system is directly underneath the basket. We define this origin as $o_n$ with $o_n = (0, 0)$. 
 
 Let's visualize this through some plotting. We do this in a rather fun way: we will create a function called `graph_player_shots()` that will take in a `player` and a `reg_season` and plot all shots with respect to those parameters. 
 
@@ -207,6 +207,7 @@ graph_player_shots <- function(player_name, reg_season) {
   ##generate a plot of this shot data
   player_shot_plot <- ggplot(data = player_shots_data, aes(x=locX, y=locY, color=shot_result)) +
     geom_point(size = 2, alpha = 0.75)  + 
+    ylim(-100, 900) + 
     xlab("X-Coordinate Location") + 
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
@@ -229,7 +230,7 @@ graph_player_shots(player_name = "Lillard", reg_season = "2021-2022")
 
 ```
 
-Through the above plots, we can see not only every specific shot each player took, but also colored based on whether they made it or not. However, one noticeable problem is standardization. Following our convention, all of these are examples of $p$ on $N$, However, the $x$ and $y$ (recall, $p = (x, y)$) scales are not the same. This something we have to fix, by using a package called `sportyR`. Using this package, we can standardize our $p$ to `sportyR`'s coordinate-system making it easy to classify our shots.  
+Through the above plots, we can see not only every specific shot each player took, but also colored based on whether they made it or not. However, one noticeable problem is standardization. Following our convention, all of these are examples of $p_n$ on $N$, However, the $x_n$ and $y_n$ (recall, $p_n= (x_n, y_n)$) scales are not the same. This something we have to fix, by using a package called `sportyR`. Using this package, we can standardize our $p_n$ to `sportyR`'s coordinate-system making it easy to classify our shots.  
 
 Before we leave this section, let's visualize the numeric bounds of $N$
 
@@ -240,15 +241,15 @@ minX_N = min(all_shots_data$locX)
 maxY_N = max(all_shots_data$locY)
 minY_N = min(all_shots_data$locY) 
 
-originX_N = 0
-originY_N = 0
+originX.N = 0
+originY.N = 0
 
 ##coordinate labels
 left_top_N_text = paste("(",minX_N, ",", maxY_N, ")")
 right_top_N_text = paste("(", maxX_N, ",", maxY_N, ")")
 left_bottom_N_text = paste("(", minX_N, ",", minY_N, ")")
 right_bottom_N_text = paste("(", maxX_N, ",", minY_N, ")")
-origin_N_text = paste("(", originX_N, ",", originY_N, ")")
+origin_N_text = paste("(", originX.N, ",", originY.N, ")")
 
 ## plot our boundaries
 ggplot() + 
@@ -256,28 +257,28 @@ ggplot() +
   geom_point(aes(x=maxX_N,y=minY_N), colour = "red", size = 4) +
   geom_point(aes(x=minX_N,y=maxY_N), colour = "red", size = 4) +
   geom_point(aes(x=minX_N,y=minY_N), colour = "red", size = 4) +
-  geom_point(aes(x= originX_N, y=originY_N), colour = "blue", size = 4) +
+  geom_point(aes(x= originX.N, y=originY.N), colour = "blue", size = 4) +
   theme_dark()
 ```
 
-The red points signify these boundary markers: 
+The points signify these boundary markers: 
 
-  * Our top left green point has coordinates: `r left_top_N_text[1]`
-  * Our top right green point has coordinates: `r right_top_N_text[1]`
-  * Our bottom left green point has coordinates: `r left_bottom_N_text[1]`
-  * Our bottom right green point has coordinates: `r right_bottom_N_text[1]`
+  * Our top left red point has coordinates: `r left_top_N_text[1]`
+  * Our top right red point has coordinates: `r right_top_N_text[1]`
+  * Our bottom left red point has coordinates: `r left_bottom_N_text[1]`
+  * Our bottom right red point has coordinates: `r right_bottom_N_text[1]`
+  * The blue point signifies our origin $o_n$ with coordinates: `r origin_N_text[1]`
 
 From this chunk we know the following: 
-For `locX` ($x$) and `locY` ($y$), with respect to a player's position $p = (x, y)$ on the basketball court plane $N$, we define $N$ as follows: 
+For `locX` ($x_n$) and `locY` ($y_n$), with respect to a player's position $p_n = (x_n, y_n)$ on the basketball court plane $N$, we define $N$ as follows: 
 
 $$
-N = \{p = (x,y) \mid x \in [`r minX_N[1]`, `r maxX_N[1]`], y \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+N = \{p_n = (x_n,y_n) \mid x_n \in [`r minX_N[1]`, `r maxX_N[1]`], y_n \in [`r minY_N[1]`, `r maxY_N[1]`]\}
 $$
 
 This can be read as: 
 
-> The court system that the NBA uses for shot-plotting (call it $N$), is simply the whole collection of all possible player positions $p$ where $p$ is simply a point on $N$ defined by the player's x-coordinate on $N$ (called $x$) and the player's y-coordinate on $N$ (called $y$) to give us $p = (x, y)$. The interval $x \in [`r minX_N[1]`, `r maxX_N[1]`]$ defines all possiblilities that $x$ can be on this court $N$. Similarly, the interval $y \in [`r maxY_N[1]`, `r maxY_N[1]`]$ defines all possiblilities that $y$ can be on this court $N$.
-
+> The court system that the NBA uses for shot-plotting (call it $N$), is simply the whole collection of all possible player positions $p_n$ where $p_n$ is simply a point on $N$ defined by the player's x-coordinate on $N$ (called $x_n$) and the player's y-coordinate on $N$ (called $y_n$) to give us $p_n = (x_n, y_n)$. The interval $x_n \in [`r minX_N[1]`, `r maxX_N[1]`]$ defines all possiblilities that $x_n$ can be on this court $N$. Similarly, the interval $y_n \in [`r maxY_N[1]`, `r maxY_N[1]`]$ defines all possiblilities that $y_n$ can be on this court $N$.
 
 
 ### Understanding Location Data: $R$
@@ -285,35 +286,42 @@ This can be read as:
 
 As we did for our location data, we defined a coordinate system that we called $N$. Now, let's define a coordinate system for `sportyR`
 
-Additionally, let $x_r$ represent the traditional x coordinate in the basketball court plane that `sportyR` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the basketball court plane that `R` uses for its graphs. Then, with respect to any traditional basketball court that `sportyR` uses, we define a position $p_r$ as the generalized location of any point on these basketball courts that `sportyR` uses such that $p_r = (x_r, y_r)$. Naturally, this means $p_r$ has origin $o_r = (0, 0)$ which is the immediate center of the court, the site of the tip-off. 
+Additionally, let $x_r$ represent the traditional x coordinate in the basketball court plane that `sportyR` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the basketball court plane that `R` uses for its graphs. Then, with respect to any traditional basketball court that `sportyR` uses, we define a position $p_r$ as the generalized location of any point on these basketball courts that `sportyR` uses such that $p_r = (x_r, y_r)$. Naturally, this means $p_r$ has origin $o_r = (0, 0)$ which we will establish in the upcoming visualizations. 
 
 Let's visualize $R$
-```{r basketball-court-visualization, echo=T}
-##generate an NBA regulation basketball plot
-basketball_plot <- geom_basketball(league = "NBA") 
 
-basketball_plot
+```{r basketball-court-visualization, echo=T}
+#court parameters/selectors
+LEAGUE = "NBA"
+COURT_VIEWS = c( "full", "offense", "offensive_key")
+DEG_ROTATE = -90
+
+##generate an NBA regulation offensive-half-court
+basketball_court <- geom_basketball(league = LEAGUE, display_range = COURT_VIEWS[1], rotation = DEG_ROTATE)
+
+basketball_court
 ```
 
-Let's go ahead and identify our boundaries. Since we know all of our shots must be inside the court perimeter, it makes sense to exclude the out-of-bounds region when defining our boundaries. We also know that an NBA court has regulation dimensions: 94 ft X 50 ft. 
-```{r court-boundaries-visualization, echo=T}
+Let's go ahead and identify our boundaries. Since we know all of our shots must be inside the court perimeter, it makes sense to exclude the out-of-bounds region when defining our boundaries. We also know that an NBA court has regulation dimensions: 94 ft X 50 ft. Since, we are dealing with the half-court perimeter, proportionately the half-court has dimensions 47 ft X 50 ft. 
+
+```{r court-boundaries, echo=T}
 ##boundary constants
-LEFT_LINE = -47
-RIGHT_LINE = 47
-TOP_LINE = 25
-BOTTOM_LINE = -25
-ORIGIN_X = 0
-ORIGIN_Y = 0
+LEFT_LINE = -25
+RIGHT_LINE = 25
+TOP_LINE = 47
+BOTTOM_LINE = -47
+originX.R = 0
+originY.R = 0
 
 ##coordinate labels
 left_top_coord_text = paste("(", LEFT_LINE, ",", TOP_LINE, ")")
 right_top_coord_text = paste("(", RIGHT_LINE, ",", TOP_LINE, ")")
 left_bottom_coord_text = paste("(", LEFT_LINE, ",", BOTTOM_LINE, ")")
 right_bottom_coord_text = paste("(", RIGHT_LINE, ",", BOTTOM_LINE, ")")
-origin_coord_text = paste("(", ORIGIN_X, ",", ORIGIN_Y, ")")
+origin_coord_text = paste("(", originX.R, ",", originY.R, ")")
 
 ##plot the boundaries
-court_boundaries <- basketball_plot +
+half_court_boundaries <- basketball_court +
   geom_hline(yintercept = TOP_LINE, color = "navyblue", linewidth = 2) +
   geom_hline(yintercept = BOTTOM_LINE, color = "steelblue", linewidth = 2) +
   geom_vline(xintercept = LEFT_LINE, color = "maroon", linewidth = 2) +
@@ -322,18 +330,18 @@ court_boundaries <- basketball_plot +
   geom_point(aes(x=RIGHT_LINE, y=TOP_LINE), colour="limegreen", size = 4) +
   geom_point(aes(x=LEFT_LINE, y=BOTTOM_LINE), colour="limegreen", size = 4) +
   geom_point(aes(x=RIGHT_LINE, y=BOTTOM_LINE), colour="limegreen", size = 4) +
-  geom_point(aes(x=ORIGIN_X, y = ORIGIN_Y), colour = "black", size = 4)
+  geom_point(aes(x=originX.R, y = originY.R), colour = "black", size = 4)
   
 
 ## visualize the boundaries
-court_boundaries
+half_court_boundaries
 ```
 
 Let's quickly discuss what we see. 
-The navy blue line is our top border with $y = `r TOP_LINE[1]`$.
-The steel blue line is our bottom border with $y = `r BOTTOM_LINE[1]`$. 
-The maroon line is our left border with $x = `r LEFT_LINE[1]`$. 
-The red line is our right border with $x = `r RIGHT_LINE[1]`$. 
+The navy blue line is our top border with $y_r = `r TOP_LINE[1]`$.
+The steel blue line is our bottom border with $y_r = `r BOTTOM_LINE[1]`$. 
+The maroon line is our left border with $x_r = `r LEFT_LINE[1]`$. 
+The red line is our right border with $x_r = `r RIGHT_LINE[1]`$. 
 
 The green points signify these line intersections: 
 
@@ -343,6 +351,7 @@ The green points signify these line intersections:
   * Our bottom right green point has coordinates: `r right_bottom_coord_text[1]`
   
 The black point is our origin $o_r$ with coordinates: `r origin_coord_text[1]`
+
 
 We can now define $R$ more rigorously. For any position $p_r$ that is in $R$, we have that: 
 
@@ -357,11 +366,257 @@ This can be read as:
 $x_r \in [`r LEFT_LINE[1]`, `r RIGHT_LINE[1]`]$ defines all possiblilities that $x_r$ can be on this court $R$. Similarly, the interval $y_r \in [`r BOTTOM_LINE[1]`, `r TOP_LINE[1]`]$ defines all possiblilities that $y_r$ can be on this court $R$.
 
 
+### Going from $N$ to $R$ to get $C$. 
+
+Now, we have established two coordinate systems: 
+
+$N$, which is the coordinate system that our data inherently uses, is defined as: 
+
+$$
+N = \{p_n = (x_n,y_n) \mid x_n \in [`r minX_N[1]`, `r maxX_N[1]`], y_n \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+$$
+
+$R$, which is the coordinate system that `sportyR` uses, is defined as: 
+
+$$
+R = \{p_r = (x_r,y_r) \mid 
+      x_r \in [`r LEFT_LINE[1]`, `r RIGHT_LINE[1]`], y_r \in [`r BOTTOM_LINE[1]`, `r TOP_LINE[1]`]
+\}
+$$
+To draw attention to our goal, the end goal is to standardize our location data so that we can, under one coordinate system $C$, define what each shot based on the precision of our location data. This will remove any ambiguity on how we define two point shots. Thus, we need to define our new origin $o$ that will be the foundation point that $C$ uses.
+
+Mathematically, we make a general statement that will be more rigorously defined later: 
+
+For standardized $x$ location and standardized $y$ location of a player's position $p$ where $p = (x, y)$), let our final coordinate system $C$ be defined as follows:  
+
+$$
+C = \{p = (x,y) \mid x \in \mathbb{R}, y \in \mathbb{R}\}
+$$
+
+So, we need to make `locX` ($x_n$) and `loc_y`($y_n$) usable so that we can plot these points $p_n$ on `sportyR`'s court $R$. This will take several translations, hence why we will go through the effort to define one more, final coordinate system that has everything standardized. We call this coordinate system $C$. To get $C$, there are three major steps we need to take: 
+
+    1) Translate $o_n$ to $o_r$, giving us a new origin $o$
+    2) Translate $R$ to scale under it's new origin $o$
+    3) Define final court coordinate system $C$ under the geometric transitions
 
 
-### Analysis 1: 
+#### Translating $o_r$ to $o_n$ to get $o$
 
-[Placeholder]
+To see how far we need to translate $o_n$ to $o_r$, let's first plot $o_n$ on $R$. From [Understanding Location Data: $N$], we know that $o_n$ lies underneath the basket on the TV offensive half-court. 
+Let's find what the coordinates of $o_n$ would be then if we plot it underneath the basket of $R$. 
+
+```{r plot-originN-on-R, echo=T}
+## tweak these numbers until we find the translation
+shift_x = 0
+shift_y = -42
+
+## "(x_trans, y_trans)"
+shifted_origin_text = paste("(", shift_x, ",", shift_y, ")")
+
+
+half_court_boundaries +
+  geom_point(aes(x=shift_x, y=shift_y), colour="yellow", size = 4) 
+```
+The above tells us the following about visualizating $o_n$ on $R$: 
+
+> Keeping $y_r \in o_r$ the same ($y_r = 0$), if we move $o_r$ right by 42 $x_r$ units, we can find the origin equivalent of $o_n$ on this system $R$.
+
+
+#### Using $o$ to redefine $R$
+
+Luckily, after seeing how $o_n$ looked in $R$, we do not have to do too much translation work. 
+For one, we were able to keep $y_r \in o_r$ the same ($y_r = 0$).  We just have to shift our $x_r$ rightwards by 42 and keep our $y_r$ the same
+
+Let's define a new basketball court with these shifts in mind
+```{r translate-geometries, echo=T}
+originX = 0
+originY = 0
+
+##new court, rotate -90, so really we need to make an x-translation equivalent to our y-translation from the previous court plot
+new_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[1], rotation=DEG_ROTATE,
+                             x_trans = shift_y)
+
+new_court + geom_point(aes(x = originX, y=originY), color = "yellow", size = 4)
+```
+This has our origin $o$ in yellow with coordinates `origin_coord_text[1]` that agrees with $o_n$ convention. Now, let's redefine $R$. In doing so, we can scale this new $R$ to agree with $N$ and therefore the resulting coordinate system is our final coordinate system $C$. 
+
+
+```{r new-court-boundaries, echo=T}
+##boundary constants
+LEFT_X = -25
+RIGHT_X = 25
+TOP_Y = 42
+BOTTOM_Y = -5
+
+##coordinate labels
+left_top_text = paste("(", LEFT_X, ",", TOP_Y, ")")
+right_top_text = paste("(", RIGHT_X, ",", TOP_Y, ")")
+left_bottom_text = paste("(", LEFT_X, ",", BOTTOM_Y, ")")
+right_bottom_text = paste("(", RIGHT_X, ",", BOTTOM_Y, ")")
+origin_text = paste("(", originX, ",", originY, ")")
+
+new_court_boundaries <- new_court +
+  geom_hline(yintercept = TOP_Y, color = "navyblue", linewidth = 2) +
+  geom_hline(yintercept = BOTTOM_Y, color = "steelblue", linewidth = 2) +
+  geom_vline(xintercept = LEFT_X, color = "maroon", linewidth = 2) +
+  geom_vline(xintercept = RIGHT_X, color = "red", linewidth = 2) + 
+  geom_point(aes(x=LEFT_X, y=TOP_Y), colour="limegreen", size = 4) + 
+  geom_point(aes(x=RIGHT_X, y=TOP_Y), colour="limegreen", size = 4) +
+  geom_point(aes(x=LEFT_X, y=BOTTOM_Y), colour="limegreen", size = 4) +
+  geom_point(aes(x=RIGHT_X, y=BOTTOM_Y), colour="limegreen", size = 4) +
+  geom_point(aes(x=originX.R, y = originY.R), colour = "black", size = 4)
+
+new_court_boundaries
+```
+
+Let's quickly discuss what we see. 
+The navy blue line is our top border with $y_r = `r TOP_Y[1]`$.
+The steel blue line is our bottom border with $y_r = `r BOTTOM_Y[1]`$. 
+The maroon line is our left border with $x_r = `r LEFT_X[1]`$. 
+The red line is our right border with $x_r = `r RIGHT_X[1]`$. 
+
+The green points signify these line intersections: 
+
+  * Our top left green point has coordinates: `r left_top_text[1]`
+  * Our top right green point has coordinates: `r right_top_text[1]`
+  * Our bottom left green point has coordinates: `r left_bottom_text[1]`
+  * Our bottom right green point has coordinates: `r right_bottom_text[1]`
+  
+The black point is our origin $o_r$ with coordinates: `r origin_text[1]`
+
+Mathematically, $R$ has been redefined this way: 
+
+$$
+R = \{p_r = (x_r,y_r) \mid 
+      x_r \in [`r LEFT_X[1]`, `r RIGHT_X[1]`], y_r \in [`r BOTTOM_Y[1]`, `r TOP_Y[1]`]
+\}
+$$
+This can be read as: 
+
+> The court system that `sportyR` uses for shot-plotting (call it $R$), is simply the whole collection of all possible player positions $p_r$ where $p_r$ is simply a point on $R$ defined by the player's x-coordinate on $R$ (called $x_r$) and the player's y-coordinate on $R$ (called $y_r$) to give us $p_r = (x_r, y_r)$. The interval $x_r \in [`r LEFT_X[1]`, `r RIGHT_X[1]`]$ defines all possiblilities that $x_r$ can be on this court $R$. Similarly, the interval $y_r \in [`r BOTTOM_Y[1]`, `r TOP_Y[1]`]$ defines all possiblilities that $y_r$ can be on this court $R$.
+
+
+#### Defining C
+
+To quickly recap, we have defined a coordinate system called $N$ in [Understanding Location Data: $N$]. We have also defined a separate coordinate system called $R$ in [Understanding Location Data: $R$]. In this section [Going from $N$ to $R$ to get $C$], our aim is to get $C$, a final coordinate system that we can use to classify our shots. 
+
+Since we have $o_n = o_r = `r origin_text[1]`$, all we need to do is apply a set of scalars $k_x, k_y$ to scale $p_r$ to $p_n$. These scaled $p_r * k$ values will then be interpreted as our possible $p$ coordinates for our final coordinate system $C$. 
+
+
+Now, let's recap our coordinate systems:  
+
+$N$, which is the coordinate system that our data inherently uses, is defined as: 
+
+$$
+N = \{p_n = (x_n,y_n) \mid x_n \in [`r minX_N[1]`, `r maxX_N[1]`], y_n \in [`r minY_N[1]`, `r maxY_N[1]`]\}
+$$
+
+$R$, which is the coordinate system that `sportyR` uses, has been **NEWLY** redefined as: 
+
+$$
+R = \{p_r = (x_r,y_r) \mid 
+      x_r \in [`r LEFT_X[1]`, `r RIGHT_X[1]`], y_r \in [`r BOTTOM_Y[1]`, `r TOP_Y[1]`]
+\}
+$$
+
+Since $N$ has a larger set of bounds than $R$, we define $K$ as the general ratio between these bounds: 
+$K = \frac{R}{N}$. In this way, we can use our `locX` ($x_n$) and `locY` ($y_n$) data and apply $K$ on those to make them graph-friendly on $C$. 
+
+For $(x_n, y_n) = p_n \in N$  
+
+Coordinate system $C$ is the result of shrinking $N$'s bounds to agree with $R$'s bounds through 
+scalar $K = \{K_x, K_y\}$
+
+$$
+C = \{p = (x, y) \mid x = \frac{x_n}{K_x}, y = \frac{y_n}{K_y}\}
+$$
+For $K_x, K_y \in K$
+
+
+Let's now implement $K$!
+
+```{r scalar-K, echo=T}
+LENGTH.N = abs(maxX_N - minX_N)
+WIDTH.N = abs(maxY_N - minY_N)
+
+LENGTH.R = abs(RIGHT_X - LEFT_X)
+WIDTH.R = abs(TOP_Y - BOTTOM_Y)
+
+K.x = LENGTH.R/LENGTH.N
+K.y = WIDTH.R/WIDTH.N
+
+all_shots_data <- all_shots_data %>%
+  mutate(c.x = locX * K.x, 
+         c.y = locY * K.y)
+```
+
+```{r C-bounds, echo=T}
+##boundaries of c.x and c.y which defines C
+maxX_C = max(all_shots_data$c.x)
+minX_C = min(all_shots_data$c.x)
+maxY_C = max(all_shots_data$c.y)
+minY_C = min(all_shots_data$c.y)
+```
+
+Having added all of our new $p$ to the data set, we have the following mathematical definition for $C$.
+
+$$
+C = \{p = (x,y) \mid 
+      x \in [`r minX_C[1]`, `r maxX_C[1]`], y_r \in [`r minY_C[1]`, `r maxY_C[1]`]
+\}
+$$
+This can be read as: 
+
+> The final court system that we use for shot-plotting (call it $C$), is simply the whole collection of all possible player positions $p$ where $p$ is simply a point on $C$ defined by the player's x-coordinate on $C$ (called $x$) and the player's y-coordinate on $C$ (called $y$) to give us $p = (x, y)$. The interval 
+$x \in [`r minX_C[1]`, `r maxX_C[1]`]$ defines all possiblilities that $x$ can be on this court $C$. Similarly, the interval $y \in [`r minY_C[1]`, `r maxY_C[1]`]$ defines all possiblilities that $y$ can be on this court $C$.
+
+```{r final-court, echo=T}
+final_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[3], rotation=DEG_ROTATE,
+                             x_trans = shift_y)
+```
+
+
+### Classifying our Shots
+
+Here is the crux of our data cleanup: classifying our shots. To justify $C$, let's create a function that is very similar to `graph_player_shots()`, with the only change being we use `c.x` and `c.y` instead of `locX` and `locY`
+
+
+
+
+
+
+```{r graph-standardized-shots, echo=T}
+graph_standardized_shots <- function(player_name, reg_season) {
+  
+  ##get the shot data of the player and the season
+  player_shots_data <- all_shots_data %>% 
+    filter((player_shooting == player_name) & (season == reg_season))
+  
+  ##generate a plot of this shot data using (x,y) E C
+  player_shot_plot <- final_court +
+    geom_point(data = player_shots_data, aes(x=c.x, y=c.y, color=shot_result)) +
+    geom_point(size = 1, alpha = 0.75)  + 
+    xlab("X-Coordinate Location") + 
+    ylab("Y-Coordinate Location") +
+    ggtitle(paste(player_name, "'s Shot Location Data"), 
+            subtitle = paste(reg_season, "NBA Regular Season"))
+  
+  ##return this plot
+  return (player_shot_plot)
+}
+
+
+##graph Lowry's shots in the 2016-2017 NBA regular season
+graph_standardized_shots(player_name = "Lowry", reg_season = "2016-2017")
+
+##graph Brunson's shots in the 2020-2021 nba regular season
+graph_standardized_shots(player_name = "Brunson", reg_season = "2020-2021")
+
+##graph Lillard's shots in the 2021-2022 nba regular season
+graph_standardized_shots(player_name = "Lillard", reg_season = "2021-2022")
+```
+
+
 
 ### Analysis 2: 
 
