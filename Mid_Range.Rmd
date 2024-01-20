@@ -131,7 +131,6 @@ get_shots_data <- function(raw_pbp_data, reg_season) {
     ##responsible for classifying certain stage of the game in period.int format
     mutate(
       interval = case_when(
-        cl <= "01:00" ~ 0.5,
         cl <= "03:00" ~ 0.4, 
         cl <= "06:00" ~ 0.3, 
         cl <= "09:00" ~ 0.2,
@@ -650,6 +649,7 @@ graph_standardized_shots(player_name = "Brunson", reg_season = "2020-2021")
 ##graph Lillard's shots in the 2021-2022 nba regular season
 graph_standardized_shots(player_name = "Lillard", reg_season = "2021-2022")
 ```
+
 That is a much better visual then what we dealt with before. With this, we can clearly see where each player took their shot and what the result was. Much can be improved with this plot, but at least we have this cleaner plot, using our final coordinate system $C$. 
 
 FINALLY, we can classify each shot. 
@@ -732,7 +732,9 @@ P = \{p_p = (x_p,y_p) \mid
       x_p \in [`r PAINT_MIN.X[1]`, `r PAINT_MAX.X[1]`], y_p \in [`r PAINT_MIN.Y[1]`, `r PAINT_MAX.Y[1]`]
 \}
 $$  
-The setup is complete. Let's classify our shots!
+The setup is complete. Let's classify our shots in the variable `shot_type`! 
+In this chunk, we will also add `shot_distance` to quantify how far each shot is from the basket. 
+
 ```{r classify-shots, echo=T}
 ##function to see if our c.x and c.y are in P
 is_paint_shot <- function(x_coord, y_coord) {
@@ -745,25 +747,40 @@ is_paint_shot <- function(x_coord, y_coord) {
     return(paint_shot)
 }
 
+##function to get shot_distance
+get_shot_distance <- function(x_coord, y_coord) {
+  
+  ##check the x and y intervals
+  shot_distance= sqrt((x_coord * x_coord) + (y_coord * y_coord))
+  
+    ##return the result  
+    return(shot_distance)
+}
 
-## use the function and the shot description to classify our shots
+## get our final data
 final_shots_data <- all_shots_data %>%
   mutate(
+    ##three or paint
     paint_shot = is_paint_shot(x_coord = c.x, y_coord = c.y), 
     three_shot = str_detect(string=de, pattern=three_shot_literal)
   ) %>%
   mutate(
+    ##paint, if not paint then check three, if not three, then it is midrange
     shot_type = case_when(
       paint_shot ~ "PAINT SHOT",
       three_shot ~ "THREE POINTER",
       TRUE ~ "MID RANGE"
     )
   ) %>%
-  select(season, gm_quarter, stage_of_game, de, player_shooting, c.x, c.y, shot_type, shot_result)
+  mutate(
+    ##calculate the shot distances
+    shot_distance = get_shot_distance(x_coord = c.x, y_coord = c.y)
+  ) %>%
+  select(season, gm_quarter, stage_of_game, de, player_shooting, c.x, c.y, shot_type, shot_result, shot_distance)
 ```
 
 Let's test our classification system. We will pick a random player
-```{r graph-classfied-shots}
+```{r graph-classfied-shots, echo=T}
 graph_classified_shots <- function(player_name, reg_season) {
   
   ##get the shot data of the player and the season
@@ -776,7 +793,7 @@ graph_classified_shots <- function(player_name, reg_season) {
     geom_point(size = 1, alpha = 0.75)  + 
     scale_color_manual(aesthetics = "color", 
                        values=c("navy","cyan3", "darkgoldenrod1"), 
-                       labels = c("Mid-Range", "Paint", "Three")) +
+                       labels = c("Mid-Range", "Paint", "Three")) + 
     xlab("X-Coordinate Location") + 
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
@@ -796,16 +813,72 @@ graph_classified_shots(player_name = "Brunson", reg_season = "2020-2021")
 graph_classified_shots(player_name = "Lillard", reg_season = "2021-2022")
 ```
 
-
-
-
 Phew! That concludes the massive data cleanup process! Now, we have everything we need to begin our analysis of [The Focus Question]
 
+## Analysis: Mid-Range Over Time 
+
+Let's analyze the prevalence of the mid-range shot over time. This analysis can provide us with a context for how the game has evolved with relation to its counterpart shots. 
+
+```{r shots-time-data, echo = T}
+##get the counts of each shot by season
+shots_by_season <- final_shots_data %>%
+  group_by(season, shot_type) %>%
+  summarize(num_shots = n())
+```
+
+```{r shots-time-graph, echo = T}
+ggplot(shots_by_season, aes(x = season, y=num_shots, color=shot_type, group = shot_type)) +
+  geom_point(size = 4) +
+  geom_line(linewidth = 1.5) +
+  scale_color_manual(aesthetics = "color", 
+                       values=c("navy","cyan3", "darkgoldenrod1"), 
+                       labels = c("Mid-Range", "Paint", "Three")) + 
+  guides(color = guide_legend(title = "Shot Type")) + 
+  xlab("NBA Regular Season") +
+  ylab("Number of Shots") +
+  ggtitle("NBA Regular Season Shot Selection Over Time", subtitle = "2015-2022") +
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) +
+  theme(legend.background = element_rect(fill = "papayawhip")) 
+
+```
+
+Unsurprisingly, one glaring takeaway is the sheer prominence of the Three Point Shot over any other shot. Hovering over attempts of 75000, with a general increasing trend during this time frame, it is clear the NBA values this shot. The midrange and the paint look paltry in comparison, hovering well underneath 25000 shot attempts. From this graph we can also conlude one other aspect of the offensive game: there is simply a greater volume of shots. If the shot volume were to be consistent year-over-year, we would expect that a rise in three point shots would equate to a decrease in paint shots and mid-range shots. However, our graph shows that this is not necessarily the case. While we do have a general rising volume of three point shots, the mid-range and paint shots remained rather steady in shot volume, indicating that offenses generally experience more possessions in recent years than past years. 
 
 
-### Analysis 2: 
 
-[Placeholder]
+## Analysis: Shot Volume by Quarter and Stage of Game
+
+Let's take a look at what the shot selection looks like at a finer level. To do this, we will factor in the quarter at which the shot was taken, and the stage within the quarter at which the shot was taken. 
+
+
+```{r shots-game-data, echo =T}
+
+## get the shots by quarter and stage of the game. 
+## we are not concerned about overtime periods
+## because we did not define intervals in those periods
+shots_in_game <- final_shots_data %>%
+  select(season, shot_type, gm_quarter, stage_of_game) %>%
+  filter(gm_quarter < 5) %>%
+  group_by(season, shot_type, gm_quarter, stage_of_game) %>%
+  summarize(num_shots = n())
+ 
+
+```
+
+```{r shots-game-graph, echo = T}
+ggplot(shots_in_game, aes(x=stage_of_game, y=num_shots, color = shot_type, fill = shot_type)) + 
+  geom_col() +
+  facet_wrap(vars(gm_quarter), scales = "free") + 
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) + 
+  theme(legend.background = element_rect(fill = "papayawhip")) +
+  xlab("Stage of the Game") +
+  ylab("Number of Shots") +
+  ggtitle("NBA Shot Selection By Quarter and Stage of Game", subtitle = "2015-2022")
+```
+
+From this beautiful graph, we can see that regardless of the quarter, the three point shot is the heavy favorite for players. Each quarter has an almost identical bar graph as the other quarters. 
 
 # Discussion
 
