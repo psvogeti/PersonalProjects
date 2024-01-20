@@ -454,30 +454,25 @@ half_court_boundaries +
   geom_point(aes(x=shift_x, y=shift_y), colour="yellow", size = 4) 
 ```
 
-The above tells us the following about visualizating $o_n$ on $R$: 
-
-> Keeping $y_r \in o_r$ the same ($y_r = 0$), if we move $o_r$ right by 42 $x_r$ units, we can find the origin equivalent of $o_n$ on this system $R$.
+What does this visualization tell us? First, this is a rotated view of $R$ (-90 deg). Thus, the $+x_r$ and the $+y_r$ axis have been rotated (-90 deg) as well. This means that $+x_r$ points to East of our black dot, and $+y_r$ points North of our black dot, with our black dot representing the origin of $R$, $o_r$. So, to make our new origin $o$, we need to shift $o_r$ downwards ($-y_r$) by `r shift_y[1]` units on this rotated view of $R$. This means on the standard (0 deg) view of $R$, we actually make a rightwards translation in the $+x_r$ direction. 
 
 
 #### Using $o$ to redefine $R$
 
-Luckily, after seeing how $o_n$ looked in $R$, we do not have to do too much translation work. 
-For one, we were able to keep $y_r \in o_r$ the same ($y_r = 0$).  We just have to shift our $x_r$ rightwards by 42 and keep our $y_r$ the same
-
 Let's define a new basketball court with these shifts in mind
+
 ```{r translate-geometries, echo=T}
 originX = 0
 originY = 0
 
-##new court, rotate -90, so really we need to make an x-translation equivalent to our y-translation from the previous court plot
+##new court, rotated -90, so really we need to make an x-translation equivalent to our y-translation from the previous court plot since the x_trans argument translates our axis for a non-rotated basketball court. 
 new_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[1], rotation=DEG_ROTATE,
                              x_trans = shift_y)
-
+##display the new court with our new origin: o
 new_court + geom_point(aes(x = originX, y=originY), color = "yellow", size = 4)
 ```
 
-This has our origin $o$ in yellow with coordinates `origin_coord_text[1]` that agrees with $o_n$ convention. Now, let's redefine $R$. In doing so, we can scale this new $R$ to agree with $N$ and therefore the resulting coordinate system is our final coordinate system $C$. 
-
+This has our origin $o$ in yellow with coordinates `r origin_coord_text[1]` that agrees with $o_n$ convention. Now, let's redefine $R$. In doing so, we can scale this new $R$ to agree with $N$ and therefore the resulting coordinate system is our final coordinate system $C$. 
 
 ```{r new-court-boundaries, echo=T}
 ##boundary constants
@@ -493,6 +488,7 @@ left_bottom_text = paste("(", LEFT_X, ",", BOTTOM_Y, ")")
 right_bottom_text = paste("(", RIGHT_X, ",", BOTTOM_Y, ")")
 origin_text = paste("(", originX, ",", originY, ")")
 
+##plot the boundaries
 new_court_boundaries <- new_court +
   geom_hline(yintercept = TOP_Y, color = "navyblue", linewidth = 2) +
   geom_hline(yintercept = BOTTOM_Y, color = "steelblue", linewidth = 2) +
@@ -520,9 +516,9 @@ The green points signify these line intersections:
   * Our bottom left green point has coordinates: `r left_bottom_text[1]`
   * Our bottom right green point has coordinates: `r right_bottom_text[1]`
   
-The black point is our origin $o_r$ with coordinates: `r origin_text[1]`
+The black point is our origin $o$ with coordinates: `r origin_text[1]`
 
-```{r R-dimensions}
+```{r R-dimensions, echo=T}
 ## dimensions of R
 LENGTH.R = abs(RIGHT_X - LEFT_X)
 WIDTH.R = abs(TOP_Y - BOTTOM_Y)
@@ -543,7 +539,7 @@ This can be read as:
 
 #### Defining C
 
-To quickly recap, we have defined a coordinate system called $N$ in [Understanding Location Data: $N$]. We have also defined a separate coordinate system called $R$ in [Understanding Location Data: $R$]. In this section [Going from $N$ to $R$ to get $C$], our aim is to get $C$, a final coordinate system that we can use to classify our shots. 
+To quickly recap, we have defined a coordinate system called $N$ in [Understanding Location Data: $N$]. We have also defined a separate coordinate system called $R$ in [Understanding Location Data: $R$]. In this section, our aim is to get $C$, a final coordinate system that we can use to classify our shots. 
 
 Since we have $o_n = o_r = `r origin_text[1]`$, all we need to do is apply a set of scalars $k_x, k_y$ to scale $p_r$ to $p_n$. These scaled $p_r * k$ values will then be interpreted as our possible $p$ coordinates for our final coordinate system $C$. 
 
@@ -585,8 +581,6 @@ Let's now implement $K$!
 K.x = LENGTH.R/LENGTH.N
 K.y = WIDTH.R/WIDTH.N
 
-EMPIRIC_TRANSLATION = .1
-
 ## Translate our N coordinate system to the R coordinate system by K
 ## This gives us a new set of coordinates that we call C (our final system)
 ## P_n * (K = {R/N}) = P_r --> P_c
@@ -625,11 +619,6 @@ final_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[2], rota
 
 Here is the crux of our data cleanup: classifying our shots. To justify $C$, let's create a function that is very similar to `graph_player_shots()`, with the only change being we use `c.x` and `c.y` instead of `locX` and `locY`
 
-
-
-
-
-
 ```{r graph-standardized-shots, echo=T}
 graph_standardized_shots <- function(player_name, reg_season) {
   
@@ -661,6 +650,156 @@ graph_standardized_shots(player_name = "Brunson", reg_season = "2020-2021")
 ##graph Lillard's shots in the 2021-2022 nba regular season
 graph_standardized_shots(player_name = "Lillard", reg_season = "2021-2022")
 ```
+That is a much better visual then what we dealt with before. With this, we can clearly see where each player took their shot and what the result was. Much can be improved with this plot, but at least we have this cleaner plot, using our final coordinate system $C$. 
+
+FINALLY, we can classify each shot. 
+
+We know that our `de` in `all_shots_data` informs us on if the shot taken was a three point shot. If it is, we call it a `"THREE POINTER"` shot Otherwise, the shot is indeed a two-point shot. Then we have two cases. The first case is that the two-point-shot is taken in the paint. If so, we simply describe this shot as a `"PAINT"` shot. If it is not in the paint, and it is a two-point shot, then it must be a `"MID RANGE"` shot.
+
+It is clear then that we must define the `"PAINT"` region. Let's call this region $P$, following the same exact structure as $C$, only that $P \subseteq C$: 
+
+Generally, we say that: 
+
+Given
+$$
+P \subseteq C
+$$
+
+Let 
+$$
+P = \{p_p = (x_p,y_p) \mid 
+      x_p \in \mathbb{R}, y_p \in \mathbb{R}
+\}
+$$
+
+This can be read as: 
+
+> We define the paint region as $P$ and exists inside of $C$. $P$ is simply the whole collection of all possible player positions $p_p$ where $p_p$ is simply a point inside $P$ defined by the player's x-coordinate in $P$ (called $x_p$) and the player's y-coordinate in $P$ (called $y_p$) to give us $p_p = (x_p, y_p)$. The interval is not yet strictly defined. 
+
+Let's visualize $P$
+```{r defining-P, echo=T}
+##boundary constants
+PAINT_MIN.X = -8
+PAINT_MAX.X = 8
+PAINT_MIN.Y = -5
+PAINT_MAX.Y = 14
+
+##coordinate labels
+left_top_paint_text = paste("(", PAINT_MIN.X, ",", PAINT_MAX.Y, ")")
+right_top_paint_text = paste("(", PAINT_MIN.X, ",", PAINT_MAX.Y, ")")
+left_bottom_paint_text = paste("(", PAINT_MIN.X, ",", PAINT_MIN.Y, ")")
+right_bottom_paint_text = paste("(", PAINT_MAX.X, ",", PAINT_MIN.Y, ")")
+
+##plot the boundaries
+paint_boundaries <- final_court +
+  geom_hline(yintercept = PAINT_MAX.Y, color = "navyblue", linewidth = 2) +
+  geom_hline(yintercept = PAINT_MIN.Y, color = "steelblue", linewidth = 2) +
+  geom_vline(xintercept = PAINT_MIN.X, color = "maroon", linewidth = 2) +
+  geom_vline(xintercept = PAINT_MAX.X, color = "red", linewidth = 2) + 
+  geom_point(aes(x=PAINT_MIN.X, y=PAINT_MAX.Y), colour="limegreen", size = 4) + 
+  geom_point(aes(x=PAINT_MAX.X, y=PAINT_MAX.Y), colour="limegreen", size = 4) +
+  geom_point(aes(x=PAINT_MIN.X, y=PAINT_MIN.Y), colour="limegreen", size = 4) +
+  geom_point(aes(x=PAINT_MAX.X, y=PAINT_MIN.Y), colour="limegreen", size = 4)
+
+paint_boundaries
+```
+
+Let's quickly discuss what we see. 
+The navy blue line is our top border of $P$ with $y_p = `r PAINT_MAX.Y[1]`$.
+The steel blue line is our bottom border of $P$  with $y_p = `r PAINT_MIN.Y[1]`$. 
+The maroon line is our left border of $P$ with  $x_p = `r PAINT_MIN.X[1]`$. 
+The red line is our right border of $P$ with $x_p = `r PAINT_MAX.X[1]`$. 
+
+The green points signify these line intersections: 
+
+  * Our top left green point has coordinates: `r left_top_paint_text[1]`
+  * Our top right green point has coordinates: `r right_top_paint_text[1]`
+  * Our bottom left green point has coordinates: `r left_bottom_paint_text[1]`
+  * Our bottom right green point has coordinates: `r right_bottom_paint_text[1]`
+  
+  
+Mathematically, $P$ has been redefined this way: 
+
+
+Given
+$$
+P \subseteq C
+$$
+
+Strictly we can say, 
+$$
+P = \{p_p = (x_p,y_p) \mid 
+      x_p \in [`r PAINT_MIN.X[1]`, `r PAINT_MAX.X[1]`], y_p \in [`r PAINT_MIN.Y[1]`, `r PAINT_MAX.Y[1]`]
+\}
+$$  
+The setup is complete. Let's classify our shots!
+```{r classify-shots, echo=T}
+##function to see if our c.x and c.y are in P
+is_paint_shot <- function(x_coord, y_coord) {
+  
+  ##check the x and y intervals
+  paint_shot = (x_coord <= PAINT_MAX.X & x_coord >= PAINT_MIN.X) &
+               (y_coord <= PAINT_MAX.Y & y_coord >= PAINT_MIN.Y)
+  
+    ##return the result  
+    return(paint_shot)
+}
+
+
+## use the function and the shot description to classify our shots
+final_shots_data <- all_shots_data %>%
+  mutate(
+    paint_shot = is_paint_shot(x_coord = c.x, y_coord = c.y), 
+    three_shot = str_detect(string=de, pattern=three_shot_literal)
+  ) %>%
+  mutate(
+    shot_type = case_when(
+      paint_shot ~ "PAINT SHOT",
+      three_shot ~ "THREE POINTER",
+      TRUE ~ "MID RANGE"
+    )
+  ) %>%
+  select(season, gm_quarter, stage_of_game, de, player_shooting, c.x, c.y, shot_type, shot_result)
+```
+
+Let's test our classification system. We will pick a random player
+```{r graph-classfied-shots}
+graph_classified_shots <- function(player_name, reg_season) {
+  
+  ##get the shot data of the player and the season
+  player_shots_data <- final_shots_data %>% 
+    filter((player_shooting == player_name) & (season == reg_season))
+  
+  ##generate a plot of this shot data using (x,y) E C
+  player_shot_plot <- final_court +
+    geom_point(data = player_shots_data, aes(x=c.x, y=c.y, color=shot_type)) +
+    geom_point(size = 1, alpha = 0.75)  + 
+    scale_color_manual(aesthetics = "color", 
+                       values=c("navy","cyan3", "darkgoldenrod1"), 
+                       labels = c("Mid-Range", "Paint", "Three")) +
+    xlab("X-Coordinate Location") + 
+    ylab("Y-Coordinate Location") +
+    ggtitle(paste(player_name, "'s Shot Location Data"), 
+            subtitle = paste(reg_season, "NBA Regular Season"))
+  
+  ##return this plot
+  return (player_shot_plot)
+}
+
+##graph Lowry's shots in the 2016-2017 NBA regular season
+graph_classified_shots(player_name = "Lowry", reg_season = "2016-2017")
+
+##graph Brunson's shots in the 2020-2021 nba regular season
+graph_classified_shots(player_name = "Brunson", reg_season = "2020-2021")
+
+##graph Lillard's shots in the 2021-2022 nba regular season
+graph_classified_shots(player_name = "Lillard", reg_season = "2021-2022")
+```
+
+
+
+
+Phew! That concludes the massive data cleanup process! Now, we have everything we need to begin our analysis of [The Focus Question]
 
 
 
