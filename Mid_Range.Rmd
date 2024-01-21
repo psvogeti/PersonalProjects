@@ -45,7 +45,7 @@ The author that has provided the data for us to use is Vladislav Shufinsky. He h
 
 [^2]: <https://www.kaggle.com/datasets/brains14482/nba-playbyplay-and-shotdetails-data-19962021/data>
 
-The data set we will use will contain a whole season's log of play-by-play data. In order to see changes over time, we will use the collection available from this data set. This collection spans from the 2015-2016 NBA season to the 2021-2022 NBA season inclusive. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the files called "*datanba_YYYY.csv*" where YYYY is the season of choice. So, the 2015-2016 season uses the "*datanba_2016.csv*
+The data set we will use will contain a whole season's log of play-by-play data. In order to see changes over time, we will use the collection available from this data set. This collection spans from the 2016-2017 NBA season to the 2022-2023 NBA season inclusive. While the entire dataset consists of four subdata sets, we will choose to use the data originally sourced from *data.nba.com* This means that we will use the files called "*datanba_YYYY.csv*" where YYYY is the season of choice. So, the 2016-2017 season uses the "*datanba_2016.csv*
 
 ### The Key Variables
 
@@ -157,32 +157,32 @@ Now we use `get_shots_data()` to get our cleaner shot data for each data set. No
 
 ```{r get-shots-data, echo=T}
 ##get the shots taken for the 2021-2022 NBA season
-inter_shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data, "2021-2022")
+inter_shots_2023 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data, "2022-2023")
+
+##get the shots taken for the 2021-2022 NBA season
+inter_shots_2022 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data, "2021-2022")
 
 ##get the shots taken for the 2020-2021 NBA season
-inter_shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2021_data, "2020-2021")
+inter_shots_2021 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data, "2020-2021")
 
 ##get the shots taken for the 2019-2020 NBA season
-inter_shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2020_data, "2019-2020")
+inter_shots_2020 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data, "2019-2020")
 
 ##get the shots taken for the 2018-2019 NBA season
-inter_shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2019_data, "2018-2019")
+inter_shots_2019 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data, "2018-2019")
 
 ##get the shots taken for the 2017-2018 NBA season
-inter_shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2018_data, "2017-2018")
+inter_shots_2018 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data, "2017-2018")
 
 ##get the shots taken for the 2016-2017 NBA season
-inter_shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2017_data, "2016-2017")
-
-##get the shots taken for the 2015-2016 NBA season
-inter_shots_2016 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data, "2015-2016")
+inter_shots_2017 <- get_shots_data(raw_pbp_data = raw_pbp_2016_data, "2016-2017")
 
 ##print out a sample of what these data frames look like
 head(inter_shots_2017, n=10)
 ```
 
 ```{r combine-shot-data, echo=T}
-all_shots_data <- rbind(inter_shots_2016, inter_shots_2017, inter_shots_2018, inter_shots_2019, inter_shots_2020, inter_shots_2021, inter_shots_2022)
+all_shots_data <- rbind(inter_shots_2017, inter_shots_2018, inter_shots_2019, inter_shots_2020, inter_shots_2021, inter_shots_2022, inter_shots_2023)
 ```
 
 
@@ -261,7 +261,7 @@ ggplot() +
   geom_point(aes(x= originX.N, y=originY.N), colour = "blue", size = 4) +
   xlab("X-Coordinate Range") +
   ylab("Y-Coordinate Range") +
-  ggtitle("Defining the NBA Location Data Coordinate System", subtitle = "2021-2022 NBA Regular Season") +
+  ggtitle("Defining the NBA Location Data Coordinate System", subtitle = "2022-2023 NBA Regular Season") +
   theme_dark()
 ```
 
@@ -838,7 +838,7 @@ ggplot(shots_by_season, aes(x = season, y=num_shots, color=shot_type, group = sh
   guides(color = guide_legend(title = "Shot Type")) + 
   xlab("NBA Regular Season") +
   ylab("Number of Shots") +
-  ggtitle("NBA Regular Season Shot Selection Over Time", subtitle = "2015-2022") +
+  ggtitle("NBA Regular Season Shot Selection Over Time", subtitle = "2016-2023") +
   theme_dark() +
   theme(plot.background = element_rect(fill = "papayawhip")) +
   theme(legend.background = element_rect(fill = "papayawhip")) 
@@ -877,7 +877,7 @@ ggplot(shots_in_game, aes(x=stage_of_game, y=num_shots, color = shot_type, fill 
   theme(legend.background = element_rect(fill = "papayawhip")) +
   xlab("Stage of the Game") +
   ylab("Number of Shots") +
-  ggtitle("NBA Shot Selection By Quarter and Stage of Game", subtitle = "2015-2022")
+  ggtitle("NBA Shot Selection By Quarter and Stage of Game", subtitle = "2016-2023")
 ```
 
 From this beautiful graph, we can see that regardless of the quarter, the three point shot is the heavy favorite for players. Each quarter has an almost identical bar graph as the other quarters. 
@@ -895,7 +895,7 @@ final_court +
   xlab("X-coordinate") +
   ylab("Y-coordinate") +
   ggtitle("Visualizing Shot Selection By Shot Distance (ft)", 
-          subtitle = "NBA Regular Seasons 2015-2022") +
+          subtitle = "NBA Regular Seasons 2016-2023") +
   theme_dark() +
   theme(plot.background = element_rect(fill = "papayawhip")) + 
   theme(legend.background = element_rect(fill = "papayawhip"))
@@ -934,7 +934,7 @@ acc_plot <- ggplot(player_accuracy_data, aes(x=season, y=shot_pct, color = shot_
   xlab("NBA Regular Season") +
   ylab("Shot Accuracy") +
   ggtitle(paste(player_name, "'s Shot Accuracy"), 
-            subtitle = "NBA Regular Seasons 2015-2022")
+            subtitle = "NBA Regular Seasons 2016-2023")
 
   return(acc_plot)
 
@@ -949,6 +949,7 @@ graph_player_accuracies(player_name = "Brunson")
 ##graph Lillard's shot accuracies
 graph_player_accuracies(player_name = "Durant")
 ```
+
 From these graphs, it is nice to see each shot type on its own grid. In this way, clutter is reduced making it easy to horizontally compare the data next to one another. Since this graph varies by player, what we can look for is how the accuracy of each shot type has changed. If particular shot types see a wide range of accuracies, then we can interpret this to mean that the player is not really worried about those shot types. Conversely, if we see a consistent increase or a steady line in shot type accuracy, then we know that the player is concentrating his offense on that shot type. 
 
 Durant is a key example of this style of interpretation. For the mid range and the three pointer shot, his accuracies have been relatively consistent. However, his paint shot has seen noticeable decline before an unprecedented increase between 2020-2021 and 2021-2022. We can interpret these observations to say that he is a perimeter threat that will shoot when he has the chance. If not, the paint is available to him. 
@@ -1000,7 +1001,7 @@ One may also consider rewriting the plot code to display hexagonal-bin plots ove
 
 #### Alternate Approach 3: Player Specifics
 
-To go along with [Limitation 1], it may be worthwhile to combine this dataset (`final_shots_data`) with another data set to provide more information on who exactly the player is. Attributes like the team the player is on and the position the player plays can help to appropriately compare shot data to the right counterparts. For instance, it would not be fair to compare Clint Capela to Steph Curry. Both play different positions and different offensive styles. Clint Capela lives and dies in the paint while Steph Curry primarily enjoys the three pointer with the occasional interior basket. However, if Clint Capela is compared to Dwight Howard while Steph Curry is compared to Chris Paul, then more meaningful interpretations on shot quality can be made by adjusting our functions to account for these player attributes. 
+To go along with [Limitation 1: The Functions], it may be worthwhile to combine this dataset (`final_shots_data`) with another data set to provide more information on who exactly the player is. Attributes like the team the player is on and the position the player plays can help to appropriately compare shot data to the right counterparts. For instance, it would not be fair to compare Clint Capela to Steph Curry. Both play different positions and different offensive styles. Clint Capela lives and dies in the paint while Steph Curry primarily enjoys the three pointer with the occasional interior basket. However, if Clint Capela is compared to Dwight Howard while Steph Curry is compared to Chris Paul, then more meaningful interpretations on shot quality can be made by adjusting our functions to account for these player attributes. 
 
 
  
