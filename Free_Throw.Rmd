@@ -5,6 +5,10 @@ date: "2023-11-22"
 output: 
   html_document:
     mathjax: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    toc_depth: 3
 ---
 
 ```{css, echo=FALSE}
@@ -721,14 +725,15 @@ get_ft_table <- function(player_name, stage_in_game) {
 ```
 
 
-Above we have built $f$. The output of $f$ consists of: 
-   - `models` the model set ${n, m_p, m}$ 
-   - `plyr` the player shooting the free throw
-   - `num_fts` the number of free throw attempts by the `plyr` in this context
-   - `made_fts` the number of made free throws by the `plyr` in this context
-   - `model_prob` the probability given by the respective `models`
-   - `model_prediction` the predicted made free throws by the respective `models`
-   - `model_accuracy` the accuracy of `model_prediction` on `made_fts`
+Above we have built $f$. The output of $f$ consists of:
+
+   * `models` the model set ${n, m_p, m}$ 
+   * `plyr` the player shooting the free throw
+   * `num_fts` the number of free throw attempts by the `plyr` in this context
+   * `made_fts` the number of made free throws by the `plyr` in this context
+   * `model_prob` the probability given by the respective `models`
+   * `model_prediction` the predicted made free throws by the respective `models`
+   * `model_accuracy` the accuracy of `model_prediction` on `made_fts`
 
 Now, we simply use $f$ to our heart's content.
 ```{r calling-f, echo =TRUE}
