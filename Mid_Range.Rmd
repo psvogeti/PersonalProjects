@@ -207,6 +207,7 @@ graph_player_shots <- function(player_name, reg_season) {
   player_shot_plot <- ggplot(data = player_shots_data, aes(x=locX, y=locY, color=shot_result)) +
     geom_point(size = 2, alpha = 0.75)  + 
     ylim(-100, 900) + 
+    scale_color_manual(values = c("green", "red"), labels = c("Made", "Miss")) +
     xlab("X-Coordinate Location") + 
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
@@ -559,7 +560,7 @@ R = \{p_r = (x_r,y_r) \mid
 \}
 $$
 
-Since $N$ has a larger set of bounds than $R$, we define $K$ as the general ratio between these bounds: 
+We define $K$ as the general ratio between these systems: 
 $K = \frac{R}{N}$. In this way, we can use our `locX` ($x_n$) and `locY` ($y_n$) data and apply $K$ on those to make them graph-friendly on $C$. 
 
 For $(x_n, y_n) = p_n \in N$  
@@ -652,11 +653,11 @@ graph_standardized_shots(player_name = "Lillard", reg_season = "2021-2022")
 
 That is a much better visual then what we dealt with before. With this, we can clearly see where each player took their shot and what the result was. Much can be improved with this plot, but at least we have this cleaner plot, using our final coordinate system $C$. 
 
-FINALLY, we can classify each shot. 
+One last step remains to classify our shots!
 
-We know that our `de` in `all_shots_data` informs us on if the shot taken was a three point shot. If it is, we call it a `"THREE POINTER"` shot Otherwise, the shot is indeed a two-point shot. Then we have two cases. The first case is that the two-point-shot is taken in the paint. If so, we simply describe this shot as a `"PAINT"` shot. If it is not in the paint, and it is a two-point shot, then it must be a `"MID RANGE"` shot.
+We know that our `de` in `all_shots_data` informs us on if the shot taken was a three point shot. If it is, we call it a `"THREE POINTER"` shot. Otherwise, the shot is indeed a two-point shot. Then we have two cases. The first case is that the two-point-shot is taken in the paint. If so, we simply describe this shot as a `"PAINT"` shot. If it is not in the paint, and it is a two-point shot, then it must be a `"MID RANGE"` shot.
 
-It is clear then that we must define the `"PAINT"` region. Let's call this region $P$, following the same exact structure as $C$, only that $P \subseteq C$: 
+It is clear then that we must define the `"PAINT"` region. Let's call this region $P$, following the same exact structure as $N$, $R$, and $C$. The only difference is that $P$ is a region inside of $C$ instead of being its own coordinate system: 
 
 Generally, we say that: 
 
@@ -779,7 +780,8 @@ final_shots_data <- all_shots_data %>%
   select(season, gm_quarter, stage_of_game, de, player_shooting, c.x, c.y, shot_type, shot_result, shot_distance)
 ```
 
-Let's test our classification system. We will pick a random player
+Let's test our classification system. Again, we simply create a function that colors the shot for a given player and a given season. 
+
 ```{r graph-classfied-shots, echo=T}
 graph_classified_shots <- function(player_name, reg_season) {
   
@@ -815,7 +817,7 @@ graph_classified_shots(player_name = "Lillard", reg_season = "2021-2022")
 
 Phew! That concludes the massive data cleanup process! Now, we have everything we need to begin our analysis of [The Focus Question]
 
-## Analysis: Mid-Range Over Time 
+### Analysis: Mid-Range Over Time 
 
 Let's analyze the prevalence of the mid-range shot over time. This analysis can provide us with a context for how the game has evolved with relation to its counterpart shots. 
 
@@ -847,7 +849,7 @@ Unsurprisingly, one glaring takeaway is the sheer prominence of the Three Point 
 
 
 
-## Analysis: Shot Volume by Quarter and Stage of Game
+### Analysis: Shot Volume by Quarter and Stage of Game
 
 Let's take a look at what the shot selection looks like at a finer level. To do this, we will factor in the quarter at which the shot was taken, and the stage within the quarter at which the shot was taken. 
 
@@ -880,40 +882,132 @@ ggplot(shots_in_game, aes(x=stage_of_game, y=num_shots, color = shot_type, fill 
 
 From this beautiful graph, we can see that regardless of the quarter, the three point shot is the heavy favorite for players. Each quarter has an almost identical bar graph as the other quarters. 
 
+
+### Analysis: Shot Distance 
+
+Another graph that can provide rich context for [The Focus Question] is how the shot-distance map looks. We can do this through a contour map. If we let our contour map be based on our shot-distances, we can see the frequency of each contour. This gives us a unique way to see not only what shot is popular, but at what range are the players most comfortable in shooting
+
+```{r distance-contour-graph, echo=T}
+final_court + 
+  geom_contour_filled(data = final_shots_data, 
+                      aes(x = c.x, y = c.y, z = shot_distance)) +
+  labs(fill = "Shot Distance (ft)") +
+  xlab("X-coordinate") +
+  ylab("Y-coordinate") +
+  ggtitle("Visualizing Shot Selection By Shot Distance (ft)", 
+          subtitle = "NBA Regular Seasons 2015-2022") +
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) + 
+  theme(legend.background = element_rect(fill = "papayawhip"))
+```
+
+From this graph, we can not only see shot distribution, but also the activity each region witnesses given our shot distances. It's pretty clear to see that we have a wonderful busy distribution of shots along the three-point line. But between the (20,30] range and the (10, 20] range, there is a noticeable void of empty space. 
+This aligns with our intuition because that space has no real value to a shot. The space offers a difficult mid-range shot which, at that point, should just be a three point attempt instead.  
+
+
+### Analysis: Shot Accuracy
+
+This is a neat metric that assesses the change in accuracy of a player by shot type, year-over-year. In doing so, we can see how our focus player has adapted his shot over time, and what shots he is primarily focusing on. 
+
+```{r accuracy-plot}
+graph_player_accuracies <- function(player_name) {
+  
+##get the shot data of the player
+player_shots_data <- final_shots_data %>% 
+  filter(player_shooting == player_name)
+
+player_accuracy_data <- player_shots_data %>% 
+ group_by(season, shot_type) %>%
+ summarize(num_attempts = n(),
+           num_made = sum(shot_result == "Made"), 
+           shot_pct = num_made/num_attempts)
+
+acc_plot <- ggplot(player_accuracy_data, aes(x=season, y=shot_pct, color = shot_type, group = 1)) + 
+  geom_point(size = 4) +
+  geom_line(linewidth = 1.5) +
+  facet_wrap(vars(shot_type), scales = "fixed") + 
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) + 
+  theme(legend.background = element_rect(fill = "papayawhip")) +
+  labs(color = "Shot Type") +
+  guides(x = guide_axis(angle = 90)) +
+  xlab("NBA Regular Season") +
+  ylab("Shot Accuracy") +
+  ggtitle(paste(player_name, "'s Shot Accuracy"), 
+            subtitle = "NBA Regular Seasons 2015-2022")
+
+  return(acc_plot)
+
+}
+
+##graph Mykhailiuk's shot accuracies
+graph_player_accuracies(player_name = "Mykhailiuk")
+
+##graph Brunson's shot accuracies
+graph_player_accuracies(player_name = "Brunson")
+
+##graph Lillard's shot accuracies
+graph_player_accuracies(player_name = "Durant")
+```
+From these graphs, it is nice to see each shot type on its own grid. In this way, clutter is reduced making it easy to horizontally compare the data next to one another. Since this graph varies by player, what we can look for is how the accuracy of each shot type has changed. If particular shot types see a wide range of accuracies, then we can interpret this to mean that the player is not really worried about those shot types. Conversely, if we see a consistent increase or a steady line in shot type accuracy, then we know that the player is concentrating his offense on that shot type. 
+
+Durant is a key example of this style of interpretation. For the mid range and the three pointer shot, his accuracies have been relatively consistent. However, his paint shot has seen noticeable decline before an unprecedented increase between 2020-2021 and 2021-2022. We can interpret these observations to say that he is a perimeter threat that will shoot when he has the chance. If not, the paint is available to him. 
+
+
 # Discussion
 
-In this section, we will discuss the results of our tests and models and their implications in the context of our question and also their broader implications and limitations. 
+In this section, we will discuss our analysis and also the limitations that we have with regards to this report. In addition, we offer alternative paths to approach [The Focus Question], and discuss the possible extensions to this report. 
 
 ### Comparing the Graphs & Overall Conclusions
 
 #### Graph Comparisons Discussion
 
-[Placeholder]
+The result of this report is rather dynamic. In [Analysis: Mid-Range Over Time], [Analysis: Shot Volume by Quarter and Stage of Game] and [Analysis: Shot Distance], we offer summarizing data with respect to the mid range and its counterparts. 
+
+In [Analysis: Mid-Range Over Time], we witnessed an astounding difference in shot volume between the three point shot against its other shot types. 
+
+In [Analysis: Shot Volume by Quarter and Stage of Game], we again saw the shot volume difference at an even smaller scale, by the quarter and the interval within the quarter. Across all quarters, the data demonstrated that players consistently opt for the three point shot more than any other shot in the game. 
+
+In [Analysis: Shot Distance], we saw a striking visual that relayed the densities of shots based on their distance from the basket. The three point shot was the busiest of all shots, while the mid-range was only viable at an intermediate distance between the three and the paint. 
+
+However, the dynamicism is reflected in our `graph_standardized_shots()`, `graph_player_accuracies()` and `graph_classified_shots()`. Each one of these functions offers a way to see, at the player-level, how their shot selection has fared in terms of the shot result (`graph_standardized_shots()`), shot accuracy (`graph_player_accuracies()`), and shot type frequency (`graph_classified_shots()`). 
 
 ### Shortcomings and Limitations
 
 
-#### Limitation 1
+#### Limitation 1: The Functions
 
-[Placeholder]
+While our customized functions do work well for the purposes we outlined, they are limited by who the focus player is. If the focus player has a unique last name, then it is easy to obtain the necessary plot data. However, if the focus player has a common last name (i.e "Thompson" works for Klay Thompson of Golden State Warriors and Tristan Thompson of the Cleveland Cavaliers), then getting the plot data becomes a problematic issue. This case is exacerbated when realizing that players can be traded to multiple teams over the course of a season and over the course of seasons. 
 
-#### Limitation 2
+#### Limitation 2: Data Size
 
-[Placeholder]
+The plots themselves are too simplistic given the data size. We dealt with 700K+ shot observations. In order to cleanly see these shots, we opted to introduce these functions and showcase the shot charts in a simple scatter plot. However, given that a player shoots thousands of shots over their career, the plots are limited in visualizing true density. They excel in showing exact shot location, but fail to show how often the player takes a shot for small locations. 
+
+#### Limitation 3: Seasons
+
+The data spans merely seven seasons. It is hard to make claims about true game change given that the time scope is comparatively small. 
 
 ### Alternate Approaches
 
 
-#### Alternate Approach 1
+#### Alternate Approach 1: Divide the Court
 
-[Placeholder]
+One alternate approach would be to further divide the court ($C$) into smaller subregions and classify each shot respective to those regions. The coordinates are already there in `c.x` and `c.y`, so such geometric classifications are completely possible. Doing so would provide extra granularity and context to our provided shot plots. 
 
-#### Alternate Approach 2
+#### Alternate Approach 2: Hexagons over Dots
 
-[Placeholder]
+One may also consider rewriting the plot code to display hexagonal-bin plots over pure scatterplots. This method can allow to graph the hexagon size by the frequency of the shots taken within the hexagon bin, and also color by shot accuracy to give a sense of how hot that particular hexagonal area is for any league player. 
+
+#### Alternate Approach 3: Player Specifics
+
+To go along with [Limitation 1], it may be worthwhile to combine this dataset (`final_shots_data`) with another data set to provide more information on who exactly the player is. Attributes like the team the player is on and the position the player plays can help to appropriately compare shot data to the right counterparts. For instance, it would not be fair to compare Clint Capela to Steph Curry. Both play different positions and different offensive styles. Clint Capela lives and dies in the paint while Steph Curry primarily enjoys the three pointer with the occasional interior basket. However, if Clint Capela is compared to Dwight Howard while Steph Curry is compared to Chris Paul, then more meaningful interpretations on shot quality can be made by adjusting our functions to account for these player attributes. 
+
+
  
 ### Potential Future Directions
 
-[Placeholder]
+While the data set may be small time-wise, the amount of analysis capable with this dataset is tremendously large. One can define a function to graph heat-maps of player shots. One can define a function to graph the player heat zones with respect to the league averages. One may also define a set of probabilities for each region based on the player taking the shot. 
+
+Similarly, there is a huge potential for this report to have an application interface that allows users to type in a player and retrieve all of these graphs at once. 
 
 # References
