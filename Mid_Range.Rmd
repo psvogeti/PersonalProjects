@@ -156,7 +156,7 @@ get_shots_data <- function(raw_pbp_data, reg_season) {
 Now we use `get_shots_data()` to get our cleaner shot data for each data set. Note, we are not done cleaning after this, but it is a nice intermediate step to have so that we can avoid running our ` r load_data` chunk. 
 
 ```{r get-shots-data, echo=T}
-##get the shots taken for the 2021-2022 NBA season
+##get the shots taken for the 2022-2023 NBA season
 inter_shots_2023 <- get_shots_data(raw_pbp_data = raw_pbp_2022_data, "2022-2023")
 
 ##get the shots taken for the 2021-2022 NBA season
@@ -190,18 +190,18 @@ all_shots_data <- rbind(inter_shots_2017, inter_shots_2018, inter_shots_2019, in
 
 Now that we have all of our shots, it's time to classify each shot. Before we do, we need to understand what `locX` and `locY` are all about. 
 
-`locX` and `locY` are the standard media coordinates used by the NBA teams to locate where a player is with reference to the basketball court. The caveat to this system is that these coordinates represent an NBA-regulation half-court plane. 
+`locX` and `locY` are the standard media coordinates used by the NBA teams to locate where a player is with reference to the basketball court. The caveat to this system is that these coordinates represent an NBA-regulation half-court plane. This coordinate system, for our reference, will be referred to as $N$. 
 
-For reference, let $x_n$ represent `locX` and $y_n$ represent `locY` such that a player's position $p_n$ on the half-court at any given moment is $p_n = (x_n, y_n)$. The origin of this system is directly underneath the basket. We define this origin as $o_n$ with $o_n = (0, 0)$. 
+For reference, let $x_n$ represent `locX` and $y_n$ represent `locY` such that a player's position $p_n$ on the half-court at any given moment is $p_n = (x_n, y_n)$. The origin of this system is directly underneath the basket. We define this origin as $o_n$ with $o_n = (0, 0)$. Again, all $p_n$ exist on this court $N$
 
-Let's visualize this through some plotting. We do this in a rather fun way: we will create a function called `graph_player_shots()` that will take in a `player` and a `reg_season` and plot all shots with respect to those parameters. 
+Let's visualize this through some plotting. We do this in a rather fun way: we will create a function called `graph_player_shots()` that will take in a `player`, `team` and `reg_season` to ensure that we identify the right player for the right season. 
 
 ```{r plotting-on-N, echo=T}
-graph_player_shots <- function(player_name, reg_season) {
+graph_player_shots <- function(player_name, team, reg_season) {
   
   ##get the shot data of the player and the season
   player_shots_data <- all_shots_data %>% 
-    filter((player_shooting == player_name) & (season == reg_season))
+    filter((player_shooting == player_name) & (season == reg_season) & (player_team == team))
   
   ##generate a plot of this shot data
   player_shot_plot <- ggplot(data = player_shots_data, aes(x=locX, y=locY, color=shot_result)) +
@@ -212,7 +212,9 @@ graph_player_shots <- function(player_name, reg_season) {
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
             subtitle = paste(reg_season, "NBA Regular Season")) +
-    theme_dark()
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) +
+  theme(legend.background = element_rect(fill = "papayawhip"))
   
   ##return this plot
   return (player_shot_plot)
@@ -220,19 +222,19 @@ graph_player_shots <- function(player_name, reg_season) {
 
 
 ##graph Lowry's shots in the 2016-2017 NBA regular season
-graph_player_shots(player_name = "Lowry", reg_season = "2016-2017")
+graph_player_shots(player_name = "Lowry", team = "TOR", reg_season = "2016-2017")
 
-##graph Brunson's shots in the 2020-2021 nba regular season
-graph_player_shots(player_name = "Brunson", reg_season = "2020-2021")
+##graph Brunson's shots in the 2020-2021 NBA regular season
+graph_player_shots(player_name = "Brunson", team = "DAL", reg_season = "2020-2021")
 
-##graph Lillard's shots in the 2021-2022 nba regular season
-graph_player_shots(player_name = "Lillard", reg_season = "2021-2022")
+##graph Lillard's shots in the 2021-2022 NBA regular season
+graph_player_shots(player_name = "Lillard", team = "POR", reg_season = "2021-2022")
 
 ```
 
 Through the above plots, we can see not only every specific shot each player took, but also colored based on whether they made it or not. However, one noticeable problem is standardization. Following our convention, all of these are examples of $p_n$ on $N$, However, the $x_n$ and $y_n$ (recall, $p_n= (x_n, y_n)$) scales are not the same. This something we have to fix, by using a package called `sportyR`. Using this package, we can standardize our $p_n$ to `sportyR`'s coordinate-system making it easy to classify our shots.  
 
-Before we leave this section, let's visualize the numeric bounds of $N$. We will do this by picking one season, the 2021-2022 regular season, and examining what the shot spread looks like. 
+Before we leave this section, let's visualize the numeric bounds of $N$. We will do this by picking one season, the 2022-2023 regular season, and examining what the shot spread looks like. 
 
 ```{r defining-N, echo=T}
 ##boundaries of locX and locY which defines N
@@ -261,7 +263,7 @@ ggplot() +
   geom_point(aes(x= originX.N, y=originY.N), colour = "blue", size = 4) +
   xlab("X-Coordinate Range") +
   ylab("Y-Coordinate Range") +
-  ggtitle("Defining the NBA Location Data Coordinate System", subtitle = "2022-2023 NBA Regular Season") +
+  ggtitle("Defining the NBA Location Data Coordinate System", subtitle = "2022-2023 NBA Regular Season Shot Distribution") +
   theme_dark()
 ```
 
@@ -309,7 +311,7 @@ From this chunk we know the following:
 For `locX` ($x_n$) and `locY` ($y_n$), with respect to a player's position $p_n = (x_n, y_n)$ on the basketball court plane $N$, we define $N$ as follows: 
 
 $$
-N = \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
+N : \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
 $$
 
 This can be read as: 
@@ -320,9 +322,9 @@ This can be read as:
 ### Understanding Location Data: $R$
 
 
-As we did for our location data, we defined a coordinate system that we called $N$. Now, let's define a coordinate system for `sportyR`
+As we did for our location data, we defined a coordinate system that we called $N$. Now, let's define a coordinate system for `sportyR` which we refer to as $R$. 
 
-Additionally, let $x_r$ represent the traditional x coordinate in the basketball court plane that `sportyR` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the basketball court plane that `R` uses for its graphs. Then, with respect to any traditional basketball court that `sportyR` uses, we define a position $p_r$ as the generalized location of any point on these basketball courts that `sportyR` uses such that $p_r = (x_r, y_r)$. Naturally, this means $p_r$ has origin $o_r = (0, 0)$ which we will establish in the upcoming visualizations. 
+Additionally, let $x_r$ represent the traditional x coordinate in the basketball court plane that `sportyR` uses for its graphs. Consequently, let $y_r$ represent the traditional y coordinate in the basketball court plane that `R` uses for its graphs. Then, with respect to any traditional basketball court that `sportyR` uses, we define a position $p_r$ as the generalized location of any point on these basketball courts that `sportyR` uses such that $p_r = (x_r, y_r)$. Naturally, this means $p_r$ has origin $o_r = (0, 0)$ which we will establish in the upcoming visualizations. Again, all $p_r$ exist on $R$
 
 Let's visualize $R$
 
@@ -409,13 +411,13 @@ Now, we have established two coordinate systems:
 $N$, which is the coordinate system that our data inherently uses, is defined as: 
 
 $$
-N = \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
+N : \{p_n = (x_n,y_n) \mid x_n \in [`r LOW_N.X[1]`, `r HIGH_N.X[1]`], y_n \in [`r LOW_N.Y[1]`, `r HIGH_N.Y[1]`]\}
 $$
 
 $R$, which is the coordinate system that `sportyR` uses, is defined as: 
 
 $$
-R = \{p_r = (x_r,y_r) \mid 
+R : \{p_r = (x_r,y_r) \mid 
       x_r \in [`r LEFT_LINE[1]`, `r RIGHT_LINE[1]`], y_r \in [`r BOTTOM_LINE[1]`, `r TOP_LINE[1]`]
 \}
 $$
@@ -426,7 +428,7 @@ Mathematically, we make a general statement that will be more rigorously defined
 For standardized $x$ location and standardized $y$ location of a player's position $p$ where $p = (x, y)$), let our final coordinate system $C$ be defined as follows:  
 
 $$
-C = \{p = (x,y) \mid x \in \mathbb{R}, y \in \mathbb{R}\}
+C : \{p = (x,y) \mid x \in \mathbb{R}, y \in \mathbb{R}\}
 $$
 
 So, we need to make `locX` ($x_n$) and `loc_y`($y_n$) usable so that we can plot these points $p_n$ on `sportyR`'s court $R$. This will take several translations, hence why we will go through the effort to define one more, final coordinate system that has everything standardized. We call this coordinate system $C$. To get $C$, there are three major steps we need to take: 
@@ -528,7 +530,7 @@ WIDTH.R = abs(TOP_Y - BOTTOM_Y)
 Mathematically, $R$ has been redefined this way: 
 
 $$
-R = \{p_r = (x_r,y_r) \mid 
+R : \{p_r = (x_r,y_r) \mid 
       x_r \in [`r LEFT_X[1]`, `r RIGHT_X[1]`], y_r \in [`r BOTTOM_Y[1]`, `r TOP_Y[1]`]
 \}
 $$
@@ -541,7 +543,7 @@ This can be read as:
 
 To quickly recap, we have defined a coordinate system called $N$ in [Understanding Location Data: $N$]. We have also defined a separate coordinate system called $R$ in [Understanding Location Data: $R$]. In this section, our aim is to get $C$, a final coordinate system that we can use to classify our shots. 
 
-Since we have $o_n = o_r = `r origin_text[1]`$, all we need to do is apply a set of scalars $k_x, k_y$ to scale $p_r$ to $p_n$. These scaled $p_r * k$ values will then be interpreted as our possible $p$ coordinates for our final coordinate system $C$. 
+Since we have $o_n = o_r = `r origin_text[1]`$, all we need to do is apply a set of proportions to scale down our $p_n$ to $p_r$. These scaled values will then be interpreted as our possible $p$ coordinates for our final coordinate system $C$. 
 
 
 Now, let's recap our coordinate systems:  
@@ -561,16 +563,18 @@ R = \{p_r = (x_r,y_r) \mid
 $$
 
 We define $K$ as the general ratio between these systems: 
-$K = \frac{R}{N}$. In this way, we can use our `locX` ($x_n$) and `locY` ($y_n$) data and apply $K$ on those to make them graph-friendly on $C$. 
+$K = \frac{R}{N}$ directional proportions $k_x = \frac{x_r}{x_n}$ and $k_y = \frac{y_r}{y_n}$ 
+This allows us to scale down our $p_n$ to $p_r$. This means that we can use our `locX` ($x_n$) and `locY` ($y_n$) data, use these proportioned coordinates on our new, final court that is very very similar to the $R$ court, $C$. 
 
 For $(x_n, y_n) = p_n \in N$  
 
 Coordinate system $C$ is the result of shrinking $N$'s bounds to agree with $R$'s bounds through 
-scalar $K = \{k_x, k_y\}$
+proportion $K = \{k_x, k_y\}$
 
 $$
-C = \{p = (x, y) \mid x = \frac{x_n}{k_x}, y = \frac{y_n}{k_y}\}
+C = \{p = (x, y) \mid x = x_n*k_x, y = y_n*k_y\}
 $$
+For $k_x = \frac{x_r}{x_n}$ and $k_y = \frac{y_r}{y_n}$ 
 For $k_x, k_y \in K$
 
 
@@ -617,14 +621,14 @@ final_court <- geom_basketball(league=LEAGUE, display_range=COURT_VIEWS[2], rota
 
 ### Classifying our Shots
 
-Here is the crux of our data cleanup: classifying our shots. To justify $C$, let's create a function that is very similar to `graph_player_shots()`, with the only change being we use `c.x` and `c.y` instead of `locX` and `locY`
+Here is the crux of our data cleanup: classifying our shots. To justify $C$, let's create a function that is very similar to `graph_player_shots()`, with the only change being we use `c.x` and `c.y` instead of `locX` and `locY`. We call this function `graph_standardized_shots()`
 
 ```{r graph-standardized-shots, echo=T}
-graph_standardized_shots <- function(player_name, reg_season) {
+graph_standardized_shots <- function(player_name, team, reg_season) {
   
   ##get the shot data of the player and the season
   player_shots_data <- all_shots_data %>% 
-    filter((player_shooting == player_name) & (season == reg_season))
+    filter((player_shooting == player_name) & (season == reg_season) & (player_team == team))
   
   ##generate a plot of this shot data using (x,y) E C
   player_shot_plot <- final_court +
@@ -634,7 +638,10 @@ graph_standardized_shots <- function(player_name, reg_season) {
     xlab("X-Coordinate Location") + 
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
-            subtitle = paste(reg_season, "NBA Regular Season"))
+            subtitle = paste(reg_season, "NBA Regular Season")) +
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) +
+  theme(legend.background = element_rect(fill = "papayawhip"))
   
   ##return this plot
   return (player_shot_plot)
@@ -642,13 +649,13 @@ graph_standardized_shots <- function(player_name, reg_season) {
 
 
 ##graph Lowry's shots in the 2016-2017 NBA regular season
-graph_standardized_shots(player_name = "Lowry", reg_season = "2016-2017")
+graph_standardized_shots(player_name = "Lowry", team = "TOR", reg_season = "2016-2017")
 
 ##graph Brunson's shots in the 2020-2021 nba regular season
-graph_standardized_shots(player_name = "Brunson", reg_season = "2020-2021")
+graph_standardized_shots(player_name = "Brunson", team = "DAL", reg_season = "2020-2021")
 
 ##graph Lillard's shots in the 2021-2022 nba regular season
-graph_standardized_shots(player_name = "Lillard", reg_season = "2021-2022")
+graph_standardized_shots(player_name = "Lillard", team = "POR", reg_season = "2021-2022")
 ```
 
 That is a much better visual then what we dealt with before. With this, we can clearly see where each player took their shot and what the result was. Much can be improved with this plot, but at least we have this cleaner plot, using our final coordinate system $C$. 
@@ -751,7 +758,10 @@ is_paint_shot <- function(x_coord, y_coord) {
 ##function to get shot_distance
 get_shot_distance <- function(x_coord, y_coord) {
   
-  ##check the x and y intervals
+  ## distance = sqrt((x2 - x1)^2 + (y2-y1)^2)
+  ## (x1, y1) = (0, 0) (shot distance from hoop and hoop is origin)
+  ## distance = sqrt((x2)^2 + (y2)^2)
+  ## distance = sqrt[(x2 * x2) + (y2 * y2)]
   shot_distance= sqrt((x_coord * x_coord) + (y_coord * y_coord))
   
     ##return the result  
@@ -777,17 +787,17 @@ final_shots_data <- all_shots_data %>%
     ##calculate the shot distances
     shot_distance = get_shot_distance(x_coord = c.x, y_coord = c.y)
   ) %>%
-  select(season, gm_quarter, stage_of_game, de, player_shooting, c.x, c.y, shot_type, shot_result, shot_distance)
+  select(season, gm_quarter, stage_of_game, de, player_team, player_shooting, c.x, c.y, shot_type, shot_result, shot_distance)
 ```
 
 Let's test our classification system. Again, we simply create a function that colors the shot for a given player and a given season. 
 
 ```{r graph-classfied-shots, echo=T}
-graph_classified_shots <- function(player_name, reg_season) {
+graph_classified_shots <- function(player_name, team, reg_season) {
   
   ##get the shot data of the player and the season
-  player_shots_data <- final_shots_data %>% 
-    filter((player_shooting == player_name) & (season == reg_season))
+   player_shots_data <- final_shots_data %>% 
+    filter((player_shooting == player_name) & (season == reg_season) & (player_team == team))
   
   ##generate a plot of this shot data using (x,y) E C
   player_shot_plot <- final_court +
@@ -799,20 +809,23 @@ graph_classified_shots <- function(player_name, reg_season) {
     xlab("X-Coordinate Location") + 
     ylab("Y-Coordinate Location") +
     ggtitle(paste(player_name, "'s Shot Location Data"), 
-            subtitle = paste(reg_season, "NBA Regular Season"))
+            subtitle = paste(reg_season, "NBA Regular Season")) +
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "papayawhip")) +
+  theme(legend.background = element_rect(fill = "papayawhip"))
   
   ##return this plot
   return (player_shot_plot)
 }
 
 ##graph Lowry's shots in the 2016-2017 NBA regular season
-graph_classified_shots(player_name = "Lowry", reg_season = "2016-2017")
+graph_classified_shots(player_name = "Lowry", team = "TOR", reg_season = "2016-2017")
 
 ##graph Brunson's shots in the 2020-2021 nba regular season
-graph_classified_shots(player_name = "Brunson", reg_season = "2020-2021")
+graph_classified_shots(player_name = "Brunson", team = "DAL", reg_season = "2020-2021")
 
 ##graph Lillard's shots in the 2021-2022 nba regular season
-graph_classified_shots(player_name = "Lillard", reg_season = "2021-2022")
+graph_classified_shots(player_name = "Lillard", team = "POR", reg_season = "2021-2022")
 ```
 
 Phew! That concludes the massive data cleanup process! Now, we have everything we need to begin our analysis of [The Focus Question]
@@ -882,7 +895,6 @@ ggplot(shots_in_game, aes(x=stage_of_game, y=num_shots, color = shot_type, fill 
 
 From this beautiful graph, we can see that regardless of the quarter, the three point shot is the heavy favorite for players. Each quarter has an almost identical bar graph as the other quarters. 
 
-
 ### Analysis: Shot Distance 
 
 Another graph that can provide rich context for [The Focus Question] is how the shot-distance map looks. We can do this through a contour map. If we let our contour map be based on our shot-distances, we can see the frequency of each contour. This gives us a unique way to see not only what shot is popular, but at what range are the players most comfortable in shooting
@@ -910,11 +922,11 @@ This aligns with our intuition because that space has no real value to a shot. T
 This is a neat metric that assesses the change in accuracy of a player by shot type, year-over-year. In doing so, we can see how our focus player has adapted his shot over time, and what shots he is primarily focusing on. 
 
 ```{r accuracy-plot}
-graph_player_accuracies <- function(player_name) {
+graph_player_accuracies <- function(player_name, team) {
   
 ##get the shot data of the player
 player_shots_data <- final_shots_data %>% 
-  filter(player_shooting == player_name)
+  filter(player_shooting == player_name) 
 
 player_accuracy_data <- player_shots_data %>% 
  group_by(season, shot_type) %>%
